@@ -16,7 +16,7 @@ import Signatures from './signatures.js'
 
 program
   .argument('<folder>', 'The folder to scan')
-  .option('-f, --fix', 'Fix the files by injecting invalid Javascript to prevent the file from loading (default: only scan and report)')
+  .option('-f, --fix', 'Fix the files by injecting plain text to prevent the file from running or being imported (default: only scan and report)')
   .option('-a, --all', 'Scan all files with all signatures (default: only scan files with matching extensions)')
   .option('-l, --limit <size>', 'Set the file size limit in bytes (default: 1000000)', 1000000)
   .parse(process.argv)
