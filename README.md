@@ -20,13 +20,13 @@ Have you found a new signature? Please submit a PR with the signature added to [
 
 ```bash
 # Just scan
-npx @mathiscode/codebase-scanner /path/to/codebase
+npx @mathiscode/codebase-scanner@latest /path/to/codebase
 # ☠️ Found signature Obfuscated Javascript (Buffered "child_process") in file /path/to/codebase/malware.js
 ```
 
 ```bash
 # Scan and fix
-npx @mathiscode/codebase-scanner --fix /path/to/codebase
+npx @mathiscode/codebase-scanner@latest --fix /path/to/codebase
 # ☠️ Found signature Obfuscated Javascript (Buffered "child_process") in file /path/to/codebase/malware.js
 # ✅ Fixed file /path/to/codebase/malware.js
 ```
