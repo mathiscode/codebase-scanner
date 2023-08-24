@@ -13,7 +13,7 @@
     "virus",
     "scan"
   ],
-  "main": "index.js",
+  "main": "index.mjs",
   "type": "module",
   "bin": {
     "codebase-scanner": "./index.mjs"

@@ -6,7 +6,7 @@
 
 A quick and dirty tool to help defend against common developer-focused malware campaigns since many of these go unnoticed by common antivirus software.
 
-When a signature is found, the file is printed to the console and optionally fixed (if `--fix` is passed). When fixing, a header is prepended to the file to prevent the malware from running or being imported. This may not be foolproof, so always exercise caution and do everything possible to avoid letting the codebase run any scripts.
+When a signature is found, the filename is printed to the console and optionally fixed (if `--fix` is passed). When fixing, a header is prepended to the file to prevent the malware from running or being imported. This may not be foolproof, so always exercise caution and do everything possible to avoid letting the codebase run any scripts.
 
 Inspired by [this experience](https://www.reddit.com/r/Upwork/comments/14nat71/scam_warning_blockchain_developer_job_postings) (obfuscated Javascript steals your browser profiles and other files via a "test task" on freelancing sites, hidden within a seemingly innocuous codebase).
 
