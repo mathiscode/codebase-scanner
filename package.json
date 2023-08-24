@@ -1,0 +1,31 @@
+{
+  "name": "@mathiscode/codebase-scanner",
+  "version": "1.0.3",
+  "description": "Scan a codebase for malware signatures",
+  "author": "Jay Mathis <code@mathis.network>",
+  "license": "MIT",
+  "keywords": [
+    "malware",
+    "obfuscated",
+    "javascript",
+    "repository",
+    "scanner",
+    "virus",
+    "scan"
+  ],
+  "main": "index.js",
+  "type": "module",
+  "bin": {
+    "codebase-scanner": "./index.mjs"
+  },
+  "scripts": {
+    "start": "node index.mjs"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "commander": "^11.0.0"
+  }
+}
