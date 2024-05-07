@@ -18,6 +18,16 @@ Have you found a new signature? Please submit a PR with the signature added to [
 
 ## Usage
 
+Scan a repository in a Docker container:
+
+```bash
+docker run -it --rm mathiscode/codebase-scanner
+# Enter the repo url: https://github.com/owner/repo
+# ☠️ Found signature Obfuscated Javascript (Buffered "child_process") in file /path/to/codebase/malware.js
+```
+
+Scan a local codebase:
+
 ```bash
 # Just scan
 npx @mathiscode/codebase-scanner@latest /path/to/codebase
