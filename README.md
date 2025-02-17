@@ -48,8 +48,8 @@ npx @mathiscode/codebase-scanner@latest --fix /path/to/codebase
 When a file is fixed, the following header is prepended to the file:
 
 <pre>
-======== MALICIOUS ========
+========= MALICIOUS =========
 This file has been flagged as malicious by https://github.com/mathiscode/codebase-scanner
 Please review the file and remove these lines if appropriate.
-======== MALICIOUS ========
+========= MALICIOUS =========
 </pre>
