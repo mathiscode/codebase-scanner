@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * Codebase Scanner by mathiscode
+ * Codebase Scanner by Jay Mathis
  * https://github.com/mathiscode/codebase-scanner
  * 
  * This script scans a folder for files containing malicious code signatures.
@@ -18,12 +18,12 @@ program
   .argument('<folder>', 'The folder to scan')
   .option('-f, --fix', 'Fix the files by injecting plain text to prevent the file from running or being imported (default: only scan and report)')
   .option('-a, --all', 'Scan all files with all signatures (default: only scan files with matching extensions)')
-  .option('-l, --limit <size>', 'Set the file size limit in bytes (default: 1000000)', 1000000)
+  .option('-l, --limit <size>', 'Set the file size limit in bytes (default: 1000000)', 1e6)
   .parse(process.argv)
 
 const folderPath = program.args[0]
 const { fix, all, limit } = program.opts()
-const maliciousHeader = '======== MALICIOUS ========\nThis file has been flagged as malicious by https://github.com/mathiscode/codebase-scanner\nPlease review the file and remove these lines if appropriate.\n======== MALICIOUS ========\n\n\n\n'
+const maliciousHeader = '========= MALICIOUS =========\nThis file has been flagged as malicious by https://github.com/mathiscode/codebase-scanner\nPlease review the file and remove these lines if appropriate.\n========= MALICIOUS =========\n\n\n\n'
 
 if (!folderPath) {
   console.error('Please provide a folder as the first command-line argument.')

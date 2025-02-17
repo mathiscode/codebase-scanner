@@ -2,7 +2,19 @@
   "name": "@mathiscode/codebase-scanner",
   "version": "1.1.1",
   "description": "Scan a codebase for malware signatures",
-  "author": "Jay Mathis <code@mathis.network>",
+  "author": {
+    "name": "Jay Mathis",
+    "email": "code@mathis.network",
+    "url": "https://jaymath.is"
+  },
+  "homepage": "https://github.com/mathiscode/codebase-scanner",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mathiscode/codebase-scanner.git"
+  },
+  "bugs": {
+    "url": "https://github.com/mathiscode/codebase-scanner/issues"
+  },
   "license": "MIT",
   "keywords": [
     "malware",
