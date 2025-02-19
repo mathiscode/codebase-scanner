@@ -18,7 +18,7 @@ program
   .argument('<folder>', 'The folder to scan')
   .option('-f, --fix', 'Fix the files by injecting plain text to prevent the file from running or being imported (default: only scan and report)')
   .option('-a, --all', 'Scan all files with all signatures (default: only scan files with matching extensions)')
-  .option('-l, --limit <size>', 'Set the file size limit in bytes (default: 1000000)', 1e6)
+  .option('-l, --limit <size>', 'Set the file size limit in bytes (default: 1,000,000)', 1e6)
   .parse(process.argv)
 
 const folderPath = program.args[0]
@@ -41,7 +41,7 @@ async function iterateFiles(folder) {
     if (stat.isDirectory()) iterateFiles(filePath)
     else {
       const extension = path.extname(filePath)
-      const signatures = all ? Signatures : Signatures.filter(s => s.extension === extension?.replace('.', '').toLowerCase())
+      const signatures = all ? Signatures : Signatures.filter(s => s.extensions.includes(extension?.replace('.', '').toLowerCase()))
 
       try {
         if (signatures.length > 0) scanFile(filePath, signatures)
@@ -69,8 +69,8 @@ async function scanFile(file, signatures) {
     }
   }
 
-  if (trigger) console.log(chalk.red(`☠️  Found signature ${chalk.white.bgRed(trigger)} in file ${file}`))
-  if (trigger && fix) console.log(chalk.green(`✅ Fixed file ${file}`))
+  if (trigger) console.log(chalk.red(`☠️  Found signature ${chalk.bgRed(trigger)} in file ${chalk.bgRed(file)}`))
+  if (trigger && fix) console.log(chalk.yellow(`⚠️  Detected and modified file ${chalk.bgYellow(file)} - review immediately`))
   data = undefined
 }
 

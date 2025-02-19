@@ -2,42 +2,42 @@ export default [
   {
     name: 'Obfuscated Javascript (Base64 "platform")',
     signature: 'cGxhdGZvcm0',
-    extension: 'js'
+    extensions: ['js', 'mjs', 'cjs', 'ts', 'mts', 'cts', 'jsx', 'tsx']
   },
 
   {
     name: 'Obfuscated Javascript (Base64 "eval")',
     signature: 'ZXZhbAo=',
-    extension: 'js'
+    extensions: ['js', 'mjs', 'cjs', 'ts', 'mts', 'cts', 'jsx', 'tsx']
   },
 
   {
     name: 'Obfuscated Javascript (Base64 "team15")',
     signature: 'dGVhbTE1',
-    extension: 'js'
+    extensions: ['js', 'mjs', 'cjs', 'ts', 'mts', 'cts', 'jsx', 'tsx']
   },
 
   {
     name: 'Obfuscated Javascript (Buffered "child_process")',
     signature: 'FhwPVBErFkoaFwNLBg',
-    extension: 'js'
+    extensions: ['js', 'mjs', 'cjs', 'ts', 'mts', 'cts', 'jsx', 'tsx']
   },
 
   {
     name: 'Obfuscated Javascript (Buffered "Local State")',
     signature: 'ORsFWRlUNUwUAAM',
-    extension: 'js'
+    extensions: ['js', 'mjs', 'cjs', 'ts', 'mts', 'cts', 'jsx', 'tsx']
   },
 
   {
     name: 'Obfuscated Javascript (Hex Functions)',
     signature: 'function(_0x',
-    extension: 'js'
+    extensions: ['js', 'mjs', 'cjs', 'ts', 'mts', 'cts', 'jsx', 'tsx']
   },
 
   {
     name: 'Obfuscated Javascript (Function Constructor)',
     signature: 'new Function(',
-    extension: 'js'
+    extensions: ['js', 'mjs', 'cjs', 'ts', 'mts', 'cts', 'jsx', 'tsx']
   }
 ]
