@@ -18,6 +18,8 @@ Currently the signatures only target this specific type of Javascript malware, b
 
 Have you found a new signature? Please submit a PR with the signature added to [`signatures.js`](signatures.js) and a sample file attached in a comment.
 
+To further examine some of these malicious codebases, check out [this repository](https://github.com/rubenmarcus/malicious-repositories).
+
 ## Usage
 
 Scan a repository in a Docker container:
