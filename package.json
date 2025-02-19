@@ -31,7 +31,8 @@
     "codebase-scanner": "./index.mjs"
   },
   "scripts": {
-    "start": "node index.mjs"
+    "start": "node index.mjs",
+    "deploy": "npm publish && docker build -t mathiscode/codebase-scanner:latest . && docker push mathiscode/codebase-scanner:latest"
   },
   "publishConfig": {
     "access": "public"
