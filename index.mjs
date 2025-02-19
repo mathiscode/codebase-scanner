@@ -61,7 +61,7 @@ async function scanFile(file, signatures) {
   let trigger
   for (const { name, signature } of signatures) {
     if (trigger) break
-    const regex = new RegExp(signature, 'g')
+    const regex = new RegExp(signature.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')
 
     if (regex.test(data)) {
       trigger = name
