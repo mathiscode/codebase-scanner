@@ -40,7 +40,7 @@ npx @mathiscode/codebase-scanner@latest /path/to/codebase
 # Scan and fix
 npx @mathiscode/codebase-scanner@latest --fix /path/to/codebase
 # ☠️ Found signature Obfuscated Javascript (Buffered "child_process") in file /path/to/codebase/malware.js
-# ✅ Fixed file /path/to/codebase/malware.js
+# ⚠️ Detected and modified file /path/to/codebase/malware.js - review immediately
 ```
 
 ## Malicious File Header
