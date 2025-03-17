@@ -74,5 +74,26 @@ export default [
     signature: 'alchemy-api-v3.cloud',
     extensions: ['js', 'mjs', 'cjs', 'ts', 'mts', 'cts', 'jsx', 'tsx'],
     level: 'malicious'
+  },
+
+  {
+    name: 'Escaped Unicode',
+    signature: '\\u0',
+    extensions: ['js', 'mjs', 'cjs', 'ts', 'mts', 'cts', 'jsx', 'tsx'],
+    level: 'warning'
+  },
+
+  {
+    name: 'Reassigned Eval',
+    signature: '=eval',
+    extensions: ['js', 'mjs', 'cjs', 'ts', 'mts', 'cts', 'jsx', 'tsx'],
+    level: 'malicious'
+  },
+
+  {
+    name: 'Reassigned Eval',
+    signature: '= eval',
+    extensions: ['js', 'mjs', 'cjs', 'ts', 'mts', 'cts', 'jsx', 'tsx'],
+    level: 'malicious'
   }
 ]

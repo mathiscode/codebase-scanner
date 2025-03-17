@@ -23,7 +23,12 @@ program
 
 const folderPath = program.args[0]
 const { fix, all, limit } = program.opts()
-const maliciousHeader = '========= MALICIOUS =========\nThis file has been flagged as malicious by https://github.com/mathiscode/codebase-scanner\nPlease review the file and remove these lines if appropriate.\n========= MALICIOUS =========\n\n\n\n'
+const maliciousHeader = `
+========= MALICIOUS ========= \u0000\u001F\uFFFE\uFFFF\u200B\u2028\u2029\uD800\uDC00
+This file has been flagged as malicious by https://github.com/mathiscode/codebase-scanner
+Please review the file and remove these lines if appropriate.
+========= MALICIOUS ========= \u0000\u001F\uFFFE\uFFFF\u200B\u2028\u2029\uD800\uDC00
+`
 
 if (!folderPath) {
   console.error('Please provide a folder as the first command-line argument.')
