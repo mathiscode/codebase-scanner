@@ -95,5 +95,28 @@ export default [
     signature: '= eval',
     extensions: ['js', 'mjs', 'cjs', 'ts', 'mts', 'cts', 'jsx', 'tsx'],
     level: 'malicious'
+  },
+
+  {
+    name: 'Obfuscated Javascript (Hex Variable Array Access)',
+    regex: true,
+    signature: '_0x[a-f0-9]{4,}\\[',
+    extensions: ['js', 'mjs', 'cjs', 'ts', 'mts', 'cts', 'jsx', 'tsx'],
+    level: 'malicious'
+  },
+
+  {
+    name: 'Obfuscated Javascript (String.fromCharCode)',
+    signature: 'String.fromCharCode(',
+    extensions: ['js', 'mjs', 'cjs', 'ts', 'mts', 'cts', 'jsx', 'tsx'],
+    level: 'warning'
+  },
+
+  {
+    name: 'Obfuscated Javascript (parseInt High Radix)',
+    regex: true,
+    signature: 'parseInt\\([^,]+,\\s*(?:[1-9]\\d+|[2-9])\\)',
+    extensions: ['js', 'mjs', 'cjs', 'ts', 'mts', 'cts', 'jsx', 'tsx'],
+    level: 'warning'
   }
 ]

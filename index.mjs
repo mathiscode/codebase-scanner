@@ -64,11 +64,13 @@ async function scanFile(file, signatures) {
   // console.log(chalk.blue(`Scanning: ${file} with ${signatures.length} signature(s)...`))
 
   let trigger
-  for (const { name, signature, level } of signatures) {
+  for (const { name, signature, level, regex } of signatures) {
     if (trigger) break
-    const regex = new RegExp(signature.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')
 
-    if (regex.test(data)) {
+    const pattern = regex ? signature : signature.replace(/[.*+?^${}()|[\\\]]/g, '\\$&')
+    const signatureRegex = new RegExp(pattern, 'g')
+
+    if (signatureRegex.test(data)) {
       if (level === 'warning') return console.log(chalk.yellow(`⚠️  Found suspicious signature ${chalk.bgYellow(name)} in file ${chalk.bgYellow(file)}`))
 
       trigger = name
