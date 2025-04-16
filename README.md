@@ -12,13 +12,11 @@ When a signature is found, the filename is printed to the console and optionally
 
 Inspired by [this experience](https://www.reddit.com/r/Upwork/comments/14nat71/scam_warning_blockchain_developer_job_postings) (obfuscated Javascript steals your browser profiles and other files via a "test task" on freelancing sites, hidden within a seemingly innocuous codebase).
 
-Currently the signatures only target this specific type of Javascript malware, but more will be added over time. Signatures may be added for other file types as well.
-
 **PRs welcome!**
 
-Have you found a new signature? Please submit a PR with the signature added to [`signatures.js`](signatures.js) and a sample file attached in a comment.
+Have you found a new signature? Please submit a PR with the signature added to [`signatures.js`](signatures.js) and a sample file in the [`samples/`](samples/) directory.
 
-To further examine some of these malicious codebases, check out [this repository](https://github.com/rubenmarcus/malicious-repositories).
+To see samples of some of these malicious codebases, check out [this repository](https://github.com/rubenmarcus/malicious-repositories).
 
 ## Usage
 
@@ -27,7 +25,7 @@ Scan a repository in a Docker container:
 ```bash
 docker run -it --rm mathiscode/codebase-scanner:latest
 # Enter the repo url: https://github.com/owner/repo
-# ☠️ Found signature Obfuscated Javascript (Buffered "child_process") in file /path/to/codebase/malware.js
+# ☠️ Found malicious signature Obfuscated Javascript (Buffered "child_process") in file /path/to/codebase/malware.js
 ```
 
 Scan a local codebase:
@@ -35,14 +33,21 @@ Scan a local codebase:
 ```bash
 # Just scan
 npx @mathiscode/codebase-scanner@latest /path/to/codebase
-# ☠️ Found signature Obfuscated Javascript (Buffered "child_process") in file /path/to/codebase/malware.js
+# ☠️ Found malicious signature Obfuscated Javascript (Buffered "child_process") in file /path/to/codebase/malware.js
 ```
 
 ```bash
 # Scan and fix
 npx @mathiscode/codebase-scanner@latest --fix /path/to/codebase
-# ☠️ Found signature Obfuscated Javascript (Buffered "child_process") in file /path/to/codebase/malware.js
+# ☠️ Found malicious signature Obfuscated Javascript (Buffered "child_process") in file /path/to/codebase/malware.js
 # ⚠️ Detected and modified file /path/to/codebase/malware.js - review immediately
+```
+
+Scan an [npm](https://www.npmjs.com/) package:
+
+```bash
+npx @mathiscode/codebase-scanner@latest --npm package-name
+# ☠️ Found malicious signature Obfuscated Javascript (Buffered "child_process") in file /path/to/codebase/malware.js
 ```
 
 ## Malicious File Header
