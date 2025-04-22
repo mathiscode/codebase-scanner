@@ -38,13 +38,13 @@ Please review the file and remove these lines if appropriate.
 if ((!folderPath && !npmPackageName) || (folderPath && npmPackageName)) {
   console.error(chalk.red('Error: Please provide either a folder path OR an npm package name using --npm, but not both.'))
   program.help()
-  process.exit(1)
+  process.exit(2)
 }
 
 async function iterateFiles(folder) {
   if (!fs.existsSync(folder)) return console.error(`Invalid path: ${folder}`)
   const files = fs.readdirSync(folder)
-  const promises = [] // Collect promises
+  const promises = []
 
   for (const file of files) {
     const filePath = path.join(folder, file)
@@ -70,7 +70,7 @@ async function iterateFiles(folder) {
       if (signatures.length > 0) {
         promises.push((async () => {
           try {
-            await scanFile(filePath, signatures)
+            return await scanFile(filePath, signatures)
           } catch (err) {
             console.error(chalk.yellow(`Warning: Error scanning file ${filePath}: ${err.message}`))
           }
@@ -78,7 +78,9 @@ async function iterateFiles(folder) {
       }
     }
   }
-  await Promise.allSettled(promises)
+  
+  const results = await Promise.allSettled(promises)
+  return results.filter(r => r.status === 'fulfilled').map(r => r.value)
 }
 
 async function scanFile(file, signatures) {
@@ -98,10 +100,8 @@ async function scanFile(file, signatures) {
         console.log(chalk.yellow(`⚠️  Found suspicious signature ${chalk.bgYellow(name)} in file ${chalk.bgYellow(file)}`))
       } else {
         trigger = name
-        if (fix) {
-          await fs.promises.writeFile(file, `${maliciousHeader}${data}`)
-        }
-        break;
+        if (fix) await fs.promises.writeFile(file, `${maliciousHeader}${data}`)
+        break
       }
     }
   }
@@ -109,6 +109,8 @@ async function scanFile(file, signatures) {
   if (trigger) console.log(chalk.red(`☠️  Found malicious signature ${chalk.bgRed(trigger)} in file ${chalk.bgRed(file)}`))
   if (trigger && fix) console.log(chalk.red(`🚨 Detected and modified malicious file ${chalk.bgRed(file)} - review immediately`))
   data = undefined
+
+  return Boolean(trigger)
 }
 
 async function scanNpmPackage(packageName) {
@@ -139,7 +141,7 @@ async function scanNpmPackage(packageName) {
     await x({ file: tarballPath, cwd: extractDir, strip: 1 })
 
     console.log(chalk.blue(`Scanning extracted package content...`))
-    await iterateFiles(extractDir)
+    return await iterateFiles(extractDir)
   } catch (error) {
     console.error(chalk.red(`An error occurred during npm package scanning: ${error.message}`))
   } finally {
@@ -156,15 +158,21 @@ async function scanNpmPackage(packageName) {
 
 async function main() {
   try {
-    if (npmPackageName) await scanNpmPackage(npmPackageName)
-    else if (folderPath) await iterateFiles(folderPath)
+    let results = []
+    if (npmPackageName) results = await scanNpmPackage(npmPackageName)
+    else if (folderPath) results = await iterateFiles(folderPath)
+    return results
   } catch (error) {
     console.error(chalk.red(`An unexpected error occurred in main execution: ${error.message}`))
-    process.exit(1)
+    process.exit(2)
   }
 }
 
-try { main() } catch (error) {
+try {
+  const result = await main()
+  const exitCode = result.flatMap(r => r).filter(r => typeof r === 'boolean').some(r => r) ? 1 : 0
+  process.exit(exitCode)
+} catch (error) {
   console.error(`An error occurred: ${error.message}`)
-  process.exit(1)
+  process.exit(2)
 }
