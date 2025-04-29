@@ -118,5 +118,12 @@ export default [
     signature: 'parseInt\\([^,]+,\\s*(?:[1-9]\\d+|[2-9])\\)',
     extensions: ['js', 'mjs', 'cjs', 'ts', 'mts', 'cts', 'jsx', 'tsx'],
     level: 'warning'
+  },
+
+  {
+    name: 'Obfuscated Javascript (Encoded Constructor)',
+    signature: 'modsbeulqtcnrcgprwofjtcixoakrhvuytnsz',
+    extensions: ['js', 'mjs', 'cjs', 'ts', 'mts', 'cts', 'jsx', 'tsx'],
+    level: 'malicious'
   }
 ]
