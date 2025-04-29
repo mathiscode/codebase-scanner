@@ -76,6 +76,18 @@ The tool can output a JSON array of detections. This can be used in more complex
 npx @mathiscode/codebase-scanner@latest --json /path/to/codebase
 ```
 
+```json
+[
+  {
+    "file": "/path/to/codebase/malware.js",
+    "triggered": true,
+    "level": "malicious",
+    "index": 0,
+    "name": "Obfuscated Javascript (Buffered \"child_process\")"
+  }
+]
+```
+
 ## Malicious File Header
 
 When a file is fixed, the following header is prepended to the file:
