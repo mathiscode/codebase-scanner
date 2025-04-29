@@ -68,6 +68,14 @@ Exit Codes:
 - `1`: Malicious code found
 - `2`: Error
 
+## JSON Output
+
+The tool can output a JSON array of detections. This can be used in more complex flows.
+
+```bash
+npx @mathiscode/codebase-scanner@latest --json /path/to/codebase
+```
+
 ## Malicious File Header
 
 When a file is fixed, the following header is prepended to the file:

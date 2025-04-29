@@ -24,10 +24,11 @@ program
   .option('-d, --deps <path>', 'Specify a path to a directory containing package.json to scan all its dependencies')
   .option('-f, --fix', 'Fix the files by injecting plain text to prevent the file from running or being imported (default: only scan and report)')
   .option('-a, --all', 'Scan all files with all signatures (default: only scan files with matching extensions)')
-  .option('-l, --limit <size>', 'Set the file size limit in bytes (default: 1,000,000)', 1e6)
+  .option('-l, --limit <size>', 'Set the file size limit in bytes', 1e6)
+  .option('-j, --json', 'Output results in JSON format')
   .parse(process.argv)
 
-const { fix, all, limit, npm: npmPackageName, deps: depsPath } = program.opts()
+const { fix, all, limit, npm: npmPackageName, deps: depsPath, json: jsonOutput } = program.opts()
 const folderPath = program.args[0]
 const maliciousHeader = `
 ========= MALICIOUS ========= \u0000\u001F\uFFFE\uFFFF\u200B\u2028\u2029\uD800\uDC00
@@ -49,6 +50,9 @@ if (providedArgs > 1) {
   process.exit(2)
 }
 
+/*
+  Iterate over all files in a folder and scan them for malicious code.
+*/
 async function iterateFiles(folder) {
   if (!fs.existsSync(folder)) return console.error(`Invalid path: ${folder}`)
   const files = fs.readdirSync(folder)
@@ -57,7 +61,7 @@ async function iterateFiles(folder) {
   for (const file of files) {
     const filePath = path.join(folder, file)
     if (path.basename(filePath) === 'node_modules') {
-      console.log(chalk.gray(`Skipping node_modules directory: ${filePath}`))
+      if (!jsonOutput) console.log(chalk.gray(`Skipping node_modules directory: ${filePath}`))
       continue;
     }
 
@@ -91,13 +95,18 @@ async function iterateFiles(folder) {
   return results.filter(r => r.status === 'fulfilled').map(r => r.value)
 }
 
+/*
+  Scan a file for malicious code.
+*/
 async function scanFile(file, signatures) {
   const stat = await fs.promises.stat(file)
   if (stat.size > limit) return
-  let data = await fs.promises.readFile(file, 'utf-8')
 
-  let index = 0
+  let data = await fs.promises.readFile(file, 'utf-8')
+  let index = -1
   let trigger
+  let triggerLevel
+
   for (const { name, signature, level, regex } of signatures) {
     if (trigger) break
 
@@ -106,26 +115,32 @@ async function scanFile(file, signatures) {
 
     if (signatureRegex.test(data)) {
       index = signatures.findIndex(s => s.signature === signature)
-      if (level === 'warning') {
-        console.log(chalk.white(`⚠️  Found suspicious signature #${index} - ${chalk.black.bgYellow(name)} in file ${chalk.black.bgYellow(file)}`))
-      } else {
-        trigger = name
-        if (fix) await fs.promises.writeFile(file, `${maliciousHeader}${data}`)
-        break
-      }
+      triggerLevel = level
+      trigger = name
+      if (fix) await fs.promises.writeFile(file, `${maliciousHeader}${data}`)
+      if (level === 'malicious') break
     }
   }
 
-  if (trigger) console.log(chalk.white(`☠️  Found malicious signature #${index} - ${chalk.bgRed(trigger)} in file ${chalk.bgRed(file)}`))
-  if (trigger && fix) console.log(chalk.white(`🚨 Detected and modified malicious file ${chalk.bgRed(file)} - review immediately`))
-  data = undefined
+  if (!jsonOutput) {
+    if (trigger && triggerLevel === 'malicious') {
+      console.log(chalk.white(`☠️  Found malicious signature #${index} - ${chalk.bgRed(trigger)} in file ${chalk.bgRed(file)}`))
+      if (fix) console.log(chalk.white(`🚨 Detected and modified malicious file ${chalk.bgRed(file)} - review immediately`))
+    } else if (trigger && triggerLevel === 'warning') {
+      console.log(chalk.white(`⚠️  Found suspicious signature #${index} - ${chalk.bgYellow(trigger)} in file ${chalk.bgYellow(file)}`))
+    }
+  }
 
-  return Boolean(trigger)
+  data = undefined
+  return { file, triggered: Boolean(trigger), level: triggerLevel, index, name: trigger || null }
 }
 
+/*
+  Scan all dependencies in a package.json file.
+*/
 async function scanDependencies(packageJsonDir) {
   const packageJsonPath = path.join(packageJsonDir, 'package.json')
-  console.log(chalk.blue(`Scanning dependencies from: ${packageJsonPath}`))
+  if (!jsonOutput) console.log(chalk.blue(`Scanning dependencies from: ${packageJsonPath}`))
   try {
     if (!fs.existsSync(packageJsonDir)) {
       throw new Error(`Directory not found: ${packageJsonDir}`)
@@ -144,11 +159,11 @@ async function scanDependencies(packageJsonDir) {
 
     const dependencyNames = Object.keys(dependencies)
     if (dependencyNames.length === 0) {
-      console.log(chalk.yellow(`No dependencies found in ${packageJsonPath}`))
+      if (!jsonOutput) console.log(chalk.yellow(`No dependencies found in ${packageJsonPath}`))
       return []
     }
 
-    console.log(chalk.blue(`Found ${dependencyNames.length} dependencies/devDependencies to scan.`))
+    if (!jsonOutput) console.log(chalk.blue(`Found ${dependencyNames.length} dependencies/devDependencies to scan.`))
     const allResults = []
 
     for (const depName of dependencyNames) {
@@ -159,7 +174,7 @@ async function scanDependencies(packageJsonDir) {
         : `${depName}` // Could add `@${depVersion}` but npm pack usually fetches latest/specified by registry
 
       if (fullDepName !== depName) {
-        console.log(chalk.gray(`Skipping local dependency: ${depName} (${depVersion})`))
+        if (!jsonOutput) console.log(chalk.gray(`Skipping local dependency: ${depName} (${depVersion})`))
         continue
       }
 
@@ -170,7 +185,7 @@ async function scanDependencies(packageJsonDir) {
         console.error(chalk.red(`Failed to scan dependency ${fullDepName}: ${error.message}`))
         // Continue scanning other dependencies
       }
-      console.log(chalk.blue("----------------------------------------"))
+      if (!jsonOutput) console.log(chalk.blue("----------------------------------------"))
     }
     return allResults
   } catch (error) {
@@ -179,15 +194,18 @@ async function scanDependencies(packageJsonDir) {
   }
 }
 
+/*
+  Scan an npm package.
+*/
 async function scanNpmPackage(packageName) {
   let tempDir
-  console.log(chalk.blue(`Attempting to scan npm package: ${packageName}`))
+  if (!jsonOutput) console.log(chalk.blue(`Attempting to scan npm package: ${packageName}`))
 
   try {
     tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'codebase-scanner-'))
-    console.log(chalk.blue(`Created temporary directory: ${tempDir}`))
+    if (!jsonOutput) console.log(chalk.blue(`Created temporary directory: ${tempDir}`))
 
-    console.log(chalk.blue(`Downloading package '${packageName}'...`))
+    if (!jsonOutput) console.log(chalk.blue(`Downloading package '${packageName}'...`))
     try {
       execSync(`npm pack ${packageName} --pack-destination "${tempDir}"`, { stdio: 'pipe' })
     } catch (error) {
@@ -199,20 +217,20 @@ async function scanNpmPackage(packageName) {
     const tarball = files.find(f => f.endsWith('.tgz'))
     if (!tarball) throw new Error(`Could not find downloaded tarball for ${packageName} in ${tempDir}`)
     const tarballPath = path.join(tempDir, tarball)
-    console.log(chalk.blue(`Downloaded ${tarball}`))
+    if (!jsonOutput) console.log(chalk.blue(`Downloaded ${tarball}`))
 
     const extractDir = path.join(tempDir, 'package')
     await fs.promises.mkdir(extractDir)
-    console.log(chalk.blue(`Extracting ${tarball} to ${extractDir}...`))
+    if (!jsonOutput) console.log(chalk.blue(`Extracting ${tarball} to ${extractDir}...`))
     await x({ file: tarballPath, cwd: extractDir, strip: 1 })
 
-    console.log(chalk.blue(`Scanning extracted package content...`))
+    if (!jsonOutput) console.log(chalk.blue(`Scanning extracted package content...`))
     return await iterateFiles(extractDir)
   } catch (error) {
     console.error(chalk.red(`An error occurred during npm package scanning: ${error.message}`))
   } finally {
     if (tempDir) {
-      console.log(chalk.blue(`Cleaning up temporary directory: ${tempDir}`))
+      if (!jsonOutput) console.log(chalk.blue(`Cleaning up temporary directory: ${tempDir}`))
       try {
         await fs.promises.rm(tempDir, { recursive: true, force: true })
       } catch (rmErr) {
@@ -222,28 +240,39 @@ async function scanNpmPackage(packageName) {
   }
 }
 
+/*
+  Main function
+*/
 async function main() {
   try {
     let results = []
-    if (npmPackageName) {
-      results = await scanNpmPackage(npmPackageName)
-    } else if (depsPath) {
-      results = await scanDependencies(depsPath)
-    } else if (folderPath) {
-      results = await iterateFiles(folderPath)
-    }
-    return results
+    if (npmPackageName) results = await scanNpmPackage(npmPackageName)
+    else if (depsPath) results = await scanDependencies(depsPath)
+    else if (folderPath) results = await iterateFiles(folderPath)
+    return Array.isArray(results) ? results : []
   } catch (error) {
     console.error(chalk.red(`An unexpected error occurred in main execution: ${error.message}`))
-    process.exit(2)
+    return []
   }
 }
 
+/*
+  Utility function to flatten our results
+*/
+function deepFlatten(arr) {
+  return arr.reduce((acc, val) => Array.isArray(val) ? acc.concat(deepFlatten(val)) : acc.concat(val), [])
+}
+
+/*
+  Main execution
+*/
 try {
   const result = await main()
-  const exitCode = result.flatMap(r => r).filter(r => typeof r === 'boolean').some(r => r) ? 1 : 0
+  const detections = deepFlatten(result).filter(r => r && typeof r === 'object').filter(r => r.triggered)
+  const exitCode = detections.some(r => r.triggered && r.level !== 'warning') ? 1 : 0
+  if (jsonOutput) console.log(JSON.stringify(detections, null, 2))
   process.exit(exitCode)
 } catch (error) {
-  console.error(`An error occurred: ${error.message}`)
+  console.error(chalk.red(`An unexpected error occurred: ${error.message}`))
   process.exit(2)
 }
