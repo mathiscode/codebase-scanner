@@ -45,6 +45,12 @@ npx @mathiscode/codebase-scanner@latest --fix /path/to/codebase
 # ⚠️ Detected and modified file /path/to/codebase/malware.js - review immediately
 ```
 
+Scan all dependencies of a project:
+
+```bash
+npx @mathiscode/codebase-scanner@latest --deps /path/to/codebase/package.json
+```
+
 Scan an [npm](https://www.npmjs.com/) package:
 
 ```bash
