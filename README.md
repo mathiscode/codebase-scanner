@@ -48,7 +48,7 @@ npx @mathiscode/codebase-scanner@latest --fix /path/to/codebase
 Scan all dependencies of a project:
 
 ```bash
-npx @mathiscode/codebase-scanner@latest --deps /path/to/codebase/package.json
+npx @mathiscode/codebase-scanner@latest --deps /path/to/codebase
 ```
 
 Scan an [npm](https://www.npmjs.com/) package:
