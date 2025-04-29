@@ -125,5 +125,13 @@ export default [
     signature: 'modsbeulqtcnrcgprwofjtcixoakrhvuytnsz',
     extensions: ['js', 'mjs', 'cjs', 'ts', 'mts', 'cts', 'jsx', 'tsx'],
     level: 'malicious'
+  },
+
+  {
+    name: 'Excessive Whitespace',
+    regex: true,
+    signature: '\\s{80,}',
+    extensions: ['js', 'mjs', 'cjs', 'ts', 'mts', 'cts', 'jsx', 'tsx'],
+    level: 'warning'
   }
 ]
