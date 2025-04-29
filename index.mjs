@@ -88,6 +88,7 @@ async function scanFile(file, signatures) {
   if (stat.size > limit) return
   let data = await fs.promises.readFile(file, 'utf-8')
 
+  let index = 0
   let trigger
   for (const { name, signature, level, regex } of signatures) {
     if (trigger) break
@@ -96,8 +97,9 @@ async function scanFile(file, signatures) {
     const signatureRegex = new RegExp(pattern, 'g')
 
     if (signatureRegex.test(data)) {
+      index = signatures.findIndex(s => s.signature === signature)
       if (level === 'warning') {
-        console.log(chalk.yellow(`⚠️  Found suspicious signature ${chalk.bgYellow(name)} in file ${chalk.bgYellow(file)}`))
+        console.log(chalk.white(`⚠️  Found suspicious signature #${index} - ${chalk.black.bgYellow(name)} in file ${chalk.black.bgYellow(file)}`))
       } else {
         trigger = name
         if (fix) await fs.promises.writeFile(file, `${maliciousHeader}${data}`)
@@ -106,8 +108,8 @@ async function scanFile(file, signatures) {
     }
   }
 
-  if (trigger) console.log(chalk.red(`☠️  Found malicious signature ${chalk.bgRed(trigger)} in file ${chalk.bgRed(file)}`))
-  if (trigger && fix) console.log(chalk.red(`🚨 Detected and modified malicious file ${chalk.bgRed(file)} - review immediately`))
+  if (trigger) console.log(chalk.white(`☠️  Found malicious signature #${index} - ${chalk.bgRed(trigger)} in file ${chalk.bgRed(file)}`))
+  if (trigger && fix) console.log(chalk.white(`🚨 Detected and modified malicious file ${chalk.bgRed(file)} - review immediately`))
   data = undefined
 
   return Boolean(trigger)
