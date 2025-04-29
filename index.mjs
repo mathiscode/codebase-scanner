@@ -21,12 +21,13 @@ import Signatures from './signatures.js'
 program
   .argument('[folder]', 'The folder to scan')
   .option('-n, --npm <package>', 'Specify an npm package name to download and scan')
+  .option('-d, --deps <path>', 'Specify a path to a directory containing package.json to scan all its dependencies')
   .option('-f, --fix', 'Fix the files by injecting plain text to prevent the file from running or being imported (default: only scan and report)')
   .option('-a, --all', 'Scan all files with all signatures (default: only scan files with matching extensions)')
   .option('-l, --limit <size>', 'Set the file size limit in bytes (default: 1,000,000)', 1e6)
   .parse(process.argv)
 
-const { fix, all, limit, npm: npmPackageName } = program.opts()
+const { fix, all, limit, npm: npmPackageName, deps: depsPath } = program.opts()
 const folderPath = program.args[0]
 const maliciousHeader = `
 ========= MALICIOUS ========= \u0000\u001F\uFFFE\uFFFF\u200B\u2028\u2029\uD800\uDC00
@@ -35,8 +36,15 @@ Please review the file and remove these lines if appropriate.
 ========= MALICIOUS ========= \u0000\u001F\uFFFE\uFFFF\u200B\u2028\u2029\uD800\uDC00
 `
 
-if ((!folderPath && !npmPackageName) || (folderPath && npmPackageName)) {
-  console.error(chalk.red('Error: Please provide either a folder path OR an npm package name using --npm, but not both.'))
+const providedArgs = [folderPath, npmPackageName, depsPath].filter(Boolean).length
+if (providedArgs === 0) {
+  console.error(chalk.red('Error: Please provide a folder path, an npm package name (--npm), or a dependency path (--deps).'))
+  program.help()
+  process.exit(2)
+}
+
+if (providedArgs > 1) {
+  console.error(chalk.red('Error: Please provide only one of: a folder path, an npm package name (--npm), or a dependency path (--deps).'))
   program.help()
   process.exit(2)
 }
@@ -115,6 +123,62 @@ async function scanFile(file, signatures) {
   return Boolean(trigger)
 }
 
+async function scanDependencies(packageJsonDir) {
+  const packageJsonPath = path.join(packageJsonDir, 'package.json')
+  console.log(chalk.blue(`Scanning dependencies from: ${packageJsonPath}`))
+  try {
+    if (!fs.existsSync(packageJsonDir)) {
+      throw new Error(`Directory not found: ${packageJsonDir}`)
+    }
+    if (!fs.existsSync(packageJsonPath)) {
+      throw new Error(`package.json not found in: ${packageJsonDir}`)
+    }
+
+    const packageJsonContent = await fs.promises.readFile(packageJsonPath, 'utf-8')
+    const packageJson = JSON.parse(packageJsonContent)
+
+    const dependencies = {
+      ...(packageJson.dependencies || {}),
+      ...(packageJson.devDependencies || {}),
+    }
+
+    const dependencyNames = Object.keys(dependencies)
+    if (dependencyNames.length === 0) {
+      console.log(chalk.yellow(`No dependencies found in ${packageJsonPath}`))
+      return []
+    }
+
+    console.log(chalk.blue(`Found ${dependencyNames.length} dependencies/devDependencies to scan.`))
+    const allResults = []
+
+    for (const depName of dependencyNames) {
+      // Construct package name with version if available, though scanNpmPackage might not use the version
+      const depVersion = dependencies[depName]
+      const fullDepName = depVersion.startsWith('file:') || depVersion.startsWith('link:') || depVersion.startsWith('/')
+        ? depName // Avoid trying to npm pack local file/link dependencies
+        : `${depName}` // Could add `@${depVersion}` but npm pack usually fetches latest/specified by registry
+
+      if (fullDepName !== depName) {
+        console.log(chalk.gray(`Skipping local dependency: ${depName} (${depVersion})`))
+        continue
+      }
+
+      try {
+        const results = await scanNpmPackage(fullDepName)
+        allResults.push(...results)
+      } catch (error) {
+        console.error(chalk.red(`Failed to scan dependency ${fullDepName}: ${error.message}`))
+        // Continue scanning other dependencies
+      }
+      console.log(chalk.blue("----------------------------------------"))
+    }
+    return allResults
+  } catch (error) {
+    console.error(chalk.red(`Error processing dependencies from ${packageJsonPath}: ${error.message}`))
+    throw error // Re-throw to be caught by the main try/catch
+  }
+}
+
 async function scanNpmPackage(packageName) {
   let tempDir
   console.log(chalk.blue(`Attempting to scan npm package: ${packageName}`))
@@ -161,8 +225,13 @@ async function scanNpmPackage(packageName) {
 async function main() {
   try {
     let results = []
-    if (npmPackageName) results = await scanNpmPackage(npmPackageName)
-    else if (folderPath) results = await iterateFiles(folderPath)
+    if (npmPackageName) {
+      results = await scanNpmPackage(npmPackageName)
+    } else if (depsPath) {
+      results = await scanDependencies(depsPath)
+    } else if (folderPath) {
+      results = await iterateFiles(folderPath)
+    }
     return results
   } catch (error) {
     console.error(chalk.red(`An unexpected error occurred in main execution: ${error.message}`))
