@@ -20,9 +20,11 @@ Have you found a new signature? Please submit a PR with the signature added to [
 
 To see samples of some of these malicious codebases, check out [this repository](https://github.com/rubenmarcus/malicious-repositories).
 
+---
+
 ## Usage
 
-Scan a repository in a Docker container:
+### Scan a repository in a Docker container
 
 ```bash
 docker run -it --rm mathiscode/codebase-scanner:latest
@@ -30,7 +32,7 @@ docker run -it --rm mathiscode/codebase-scanner:latest
 # ☠️ Found malicious signature Obfuscated Javascript (Buffered "child_process") in file /path/to/codebase/malware.js
 ```
 
-Scan a local codebase:
+### Scan a local codebase
 
 ```bash
 # Just scan
@@ -45,18 +47,20 @@ npx @mathiscode/codebase-scanner@latest --fix /path/to/codebase
 # ⚠️ Detected and modified file /path/to/codebase/malware.js - review immediately
 ```
 
-Scan all dependencies of a project:
+### Scan all dependencies of a project (package.json)
 
 ```bash
 npx @mathiscode/codebase-scanner@latest --deps /path/to/codebase
 ```
 
-Scan an [npm](https://www.npmjs.com/) package:
+### Scan an [npm](https://www.npmjs.com/) package:
 
 ```bash
 npx @mathiscode/codebase-scanner@latest --npm package-name
 # ☠️ Found malicious signature Obfuscated Javascript (Buffered "child_process") in file /path/to/codebase/malware.js
 ```
+
+---
 
 ## Exit Codes
 
@@ -93,8 +97,8 @@ npx @mathiscode/codebase-scanner@latest --json /path/to/codebase
 When a file is fixed, the following header is prepended to the file:
 
 <pre>
-========= MALICIOUS =========
+========= MALICIOUS ========= [hidden unicode characters to help break loading]
 This file has been flagged as malicious by https://github.com/mathiscode/codebase-scanner
 Please review the file and remove these lines if appropriate.
-========= MALICIOUS =========
+========= MALICIOUS ========= [hidden unicode characters to help break loading]
 </pre>
