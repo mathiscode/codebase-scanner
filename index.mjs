@@ -18,7 +18,13 @@ import { x } from 'tar'
 
 import Signatures from './signatures/index.mjs'
 
-const packageJSON = JSON.parse(fs.readFileSync('./package.json', 'utf8'))
+let packageJSON = { version: 'unknown' }
+try {
+  const packagePath = new URL('./package.json', import.meta.url).pathname
+  packageJSON = JSON.parse(fs.readFileSync(packagePath, 'utf8'))
+} catch (error) {
+  console.warn(chalk.yellow(`Warning: Could not read version from codebase-scanner's package.json: ${error.message}`))
+}
 
 const maliciousHeader = `
 ========= MALICIOUS ========= \u0000\u001F\uFFFE\uFFFF\u200B\u2028\u2029\uD800\uDC00
