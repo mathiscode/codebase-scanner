@@ -1,3 +1,12 @@
+/**
+ * @typedef {Object} Signature
+ * @property {string} name
+ * @property {boolean} regex
+ * @property {string} signature
+ * @property {string[]} extensions
+ * @property {string} level
+ */
+
 export default [
   {
     name: 'Obfuscated Javascript (Base64 "platform")',

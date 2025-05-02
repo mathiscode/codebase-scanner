@@ -16,7 +16,7 @@ import chalk from 'chalk'
 import { program } from 'commander'
 import { x } from 'tar'
 
-import Signatures from './signatures.js'
+import Signatures from './signatures/index.mjs'
 
 program
   .argument('[folder]', 'The folder to scan')
