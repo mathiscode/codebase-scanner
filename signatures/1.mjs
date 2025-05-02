@@ -36,7 +36,7 @@ export default [
     name: 'Python Exec Call',
     signature: 'exec(',
     extensions: ['py'],
-    level: 'malicious'
+    level: 'warning'
   },
   {
     name: 'Python Base64 Decode',

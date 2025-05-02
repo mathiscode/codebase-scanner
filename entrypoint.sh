@@ -7,4 +7,4 @@ echo "Enter the repo url you want to scan: "
 read repo_url
 git clone --quiet $repo_url /opt/repo
 npm config set update-notifier false
-NODE_NO_WARNINGS=true npm_config_yes=true npx @mathiscode/codebase-scanner /opt/repo
+NODE_NO_WARNINGS=true npm_config_yes=true npx @mathiscode/codebase-scanner@latest local /opt/repo

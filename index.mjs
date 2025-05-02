@@ -4,7 +4,7 @@
  * Codebase Scanner by Jay Mathis
  * https://github.com/mathiscode/codebase-scanner
  * 
- * This script scans a folder for files containing malicious code signatures.
+ * Scan a folder, repository, npm/pypi package, or dependencies for malicious signatures.
 **/
 
 import fs from 'node:fs'
@@ -18,18 +18,8 @@ import { x } from 'tar'
 
 import Signatures from './signatures/index.mjs'
 
-program
-  .argument('[folder]', 'The folder to scan')
-  .option('-n, --npm <package>', 'Specify an npm package name to download and scan')
-  .option('-d, --deps <path>', 'Specify a path to a directory containing package.json to scan all its dependencies')
-  .option('-f, --fix', 'Fix the files by injecting plain text to prevent the file from running or being imported (default: only scan and report)')
-  .option('-a, --all', 'Scan all files with all signatures (default: only scan files with matching extensions)')
-  .option('-l, --limit <size>', 'Set the file size limit in bytes', 1e6)
-  .option('-j, --json', 'Output results in JSON format')
-  .parse(process.argv)
+const packageJSON = JSON.parse(fs.readFileSync('./package.json', 'utf8'))
 
-const { fix, all, limit, npm: npmPackageName, deps: depsPath, json: jsonOutput } = program.opts()
-const folderPath = program.args[0]
 const maliciousHeader = `
 ========= MALICIOUS ========= \u0000\u001F\uFFFE\uFFFF\u200B\u2028\u2029\uD800\uDC00
 This file has been flagged as malicious by https://github.com/mathiscode/codebase-scanner
@@ -37,23 +27,48 @@ Please review the file and remove these lines if appropriate.
 ========= MALICIOUS ========= \u0000\u001F\uFFFE\uFFFF\u200B\u2028\u2029\uD800\uDC00
 `
 
-const providedArgs = [folderPath, npmPackageName, depsPath].filter(Boolean).length
-if (providedArgs === 0) {
-  console.error(chalk.red('Error: Please provide a folder path, an npm package name (--npm), or a dependency path (--deps).'))
-  program.help()
-  process.exit(2)
-}
+program
+  .version(packageJSON.version || 'unknown')
+  .description('Scan a folder, repository, npm/pypi package, or dependencies for malicious signatures.')
 
-if (providedArgs > 1) {
-  console.error(chalk.red('Error: Please provide only one of: a folder path, an npm package name (--npm), or a dependency path (--deps).'))
-  program.help()
-  process.exit(2)
-}
+program
+  .command('local [folder]')
+  .description('Scan a local folder (defaults to current directory)')
+  .option('-f, --fix', 'Fix the files by injecting plain text (default: only scan and report)')
+  .option('-a, --all', 'Scan all files with all signatures (default: only scan matching extensions)')
+  .option('-l, --limit <size>', 'Set the file size limit in bytes', '1000000') // Default to 1MB
+  .option('-j, --json', 'Output results in JSON format')
+  .action(runLocalScan)
+
+program
+  .command('npm <package>')
+  .description('Download and scan an npm package')
+  .option('-a, --all', 'Scan all files with all signatures (default: only scan matching extensions)')
+  .option('-l, --limit <size>', 'Set the file size limit in bytes', '1000000')
+  .option('-j, --json', 'Output results in JSON format')
+  .action(runNpmScan)
+
+program
+  .command('pypi <package>')
+  .description('Download and scan a PyPI package')
+  .option('-a, --all', 'Scan all files with all signatures (default: only scan matching extensions)')
+  .option('-l, --limit <size>', 'Set the file size limit in bytes', '1000000')
+  .option('-j, --json', 'Output results in JSON format')
+  .action(runPypiScan)
+
+program
+  .command('deps <path>')
+  .description('Scan dependencies specified in a directory (package.json/requirements.txt)')
+  .option('-a, --all', 'Scan all files with all signatures (default: only scan matching extensions)')
+  .option('-l, --limit <size>', 'Set the file size limit in bytes', '1000000')
+  .option('-j, --json', 'Output results in JSON format')
+  .action(runDepsScan)
 
 /*
   Iterate over all files in a folder and scan them for malicious code.
 */
-async function iterateFiles(folder) {
+async function iterateFiles(folder, options) {
+  const { json: jsonOutput, all } = options
   if (!fs.existsSync(folder)) return console.error(`Invalid path: ${folder}`)
   const files = fs.readdirSync(folder)
   const promises = []
@@ -74,7 +89,7 @@ async function iterateFiles(folder) {
     }
 
     if (stat.isDirectory()) {
-      promises.push(iterateFiles(filePath))
+      promises.push(iterateFiles(filePath, options))
     } else {
       const extension = path.extname(filePath)
       const signatures = all ? Signatures : Signatures.filter(s => s.extensions.includes(extension?.replace('.', '').toLowerCase()))
@@ -82,7 +97,7 @@ async function iterateFiles(folder) {
       if (signatures.length > 0) {
         promises.push((async () => {
           try {
-            return await scanFile(filePath, signatures)
+            return await scanFile(filePath, signatures, options)
           } catch (err) {
             console.error(chalk.yellow(`Warning: Error scanning file ${filePath}: ${err.message}`))
           }
@@ -98,7 +113,8 @@ async function iterateFiles(folder) {
 /*
   Scan a file for malicious code.
 */
-async function scanFile(file, signatures) {
+async function scanFile(file, signatures, options) {
+  const { limit, fix, json: jsonOutput } = options
   const stat = await fs.promises.stat(file)
   if (stat.size > limit) return
 
@@ -136,68 +152,61 @@ async function scanFile(file, signatures) {
 }
 
 /*
-  Scan all dependencies in a package.json file.
+  Scan all dependencies specified in a directory (package.json or requirements.txt).
 */
-async function scanDependencies(packageJsonDir) {
-  const packageJsonPath = path.join(packageJsonDir, 'package.json')
-  if (!jsonOutput) console.log(chalk.blue(`Scanning dependencies from: ${packageJsonPath}`))
-  try {
-    if (!fs.existsSync(packageJsonDir)) {
-      throw new Error(`Directory not found: ${packageJsonDir}`)
-    }
-    if (!fs.existsSync(packageJsonPath)) {
-      throw new Error(`package.json not found in: ${packageJsonDir}`)
-    }
+async function scanDependencies(dependencyDir, options) {
+  const { json: jsonOutput } = options
+  if (!jsonOutput) console.log(chalk.blue(`Scanning dependencies in directory: ${dependencyDir}`))
 
-    const packageJsonContent = await fs.promises.readFile(packageJsonPath, 'utf-8')
-    const packageJson = JSON.parse(packageJsonContent)
-
-    const dependencies = {
-      ...(packageJson.dependencies || {}),
-      ...(packageJson.devDependencies || {}),
-    }
-
-    const dependencyNames = Object.keys(dependencies)
-    if (dependencyNames.length === 0) {
-      if (!jsonOutput) console.log(chalk.yellow(`No dependencies found in ${packageJsonPath}`))
-      return []
-    }
-
-    if (!jsonOutput) console.log(chalk.blue(`Found ${dependencyNames.length} dependencies/devDependencies to scan.`))
-    const allResults = []
-
-    for (const depName of dependencyNames) {
-      // Construct package name with version if available, though scanNpmPackage might not use the version
-      const depVersion = dependencies[depName]
-      const fullDepName = depVersion.startsWith('file:') || depVersion.startsWith('link:') || depVersion.startsWith('/')
-        ? depName // Avoid trying to npm pack local file/link dependencies
-        : `${depName}` // Could add `@${depVersion}` but npm pack usually fetches latest/specified by registry
-
-      if (fullDepName !== depName) {
-        if (!jsonOutput) console.log(chalk.gray(`Skipping local dependency: ${depName} (${depVersion})`))
-        continue
-      }
-
-      try {
-        const results = await scanNpmPackage(fullDepName)
-        allResults.push(...results)
-      } catch (error) {
-        console.error(chalk.red(`Failed to scan dependency ${fullDepName}: ${error.message}`))
-        // Continue scanning other dependencies
-      }
-      if (!jsonOutput) console.log(chalk.blue("----------------------------------------"))
-    }
-    return allResults
-  } catch (error) {
-    console.error(chalk.red(`Error processing dependencies from ${packageJsonPath}: ${error.message}`))
-    throw error // Re-throw to be caught by the main try/catch
+  if (!fs.existsSync(dependencyDir)) {
+    throw new Error(`Directory not found: ${dependencyDir}`)
   }
+
+  const packageJsonPath = path.join(dependencyDir, 'package.json')
+  const requirementsPath = path.join(dependencyDir, 'requirements.txt')
+
+  const hasPackageJson = fs.existsSync(packageJsonPath)
+  const hasRequirementsTxt = fs.existsSync(requirementsPath)
+
+  if (!hasPackageJson && !hasRequirementsTxt) {
+    if (!jsonOutput) console.log(chalk.yellow(`No package.json or requirements.txt found in ${dependencyDir}`))
+    return []
+  }
+
+  let allResults = []
+  let errors = []
+
+  if (hasPackageJson) {
+    try {
+      const npmResults = await scanNpmDependencies(dependencyDir, options)
+      if (npmResults) allResults.push(...npmResults)
+    } catch (error) {
+      errors.push(error)
+    }
+  }
+
+  if (hasRequirementsTxt) {
+    try {
+      const pypiResults = await scanPypiDependencies(dependencyDir, options)
+      if (pypiResults) allResults.push(...pypiResults)
+    } catch (error) {
+      errors.push(error)
+    }
+  }
+
+  if (errors.length > 0) {
+    console.error(chalk.red(`Encountered ${errors.length} errors during dependency scanning.`))
+    throw errors[0]
+  }
+
+  return allResults
 }
 
 /*
   Scan an npm package.
 */
-async function scanNpmPackage(packageName) {
+async function scanNpmPackage(packageName, options) {
+  const { json: jsonOutput } = options
   let tempDir
   if (!jsonOutput) console.log(chalk.blue(`Attempting to scan npm package: ${packageName}`))
 
@@ -225,7 +234,7 @@ async function scanNpmPackage(packageName) {
     await x({ file: tarballPath, cwd: extractDir, strip: 1 })
 
     if (!jsonOutput) console.log(chalk.blue(`Scanning extracted package content...`))
-    return await iterateFiles(extractDir)
+    return await iterateFiles(extractDir, options)
   } catch (error) {
     console.error(chalk.red(`An error occurred during npm package scanning: ${error.message}`))
   } finally {
@@ -241,19 +250,230 @@ async function scanNpmPackage(packageName) {
 }
 
 /*
-  Main function
+  Scan a PyPI package.
 */
-async function main() {
+async function scanPypiPackage(packageName, options) {
+  const { json: jsonOutput } = options
+  let tempDir
+  if (!jsonOutput) console.log(chalk.blue(`Attempting to scan PyPI package: ${packageName}`))
+
   try {
-    let results = []
-    if (npmPackageName) results = await scanNpmPackage(npmPackageName)
-    else if (depsPath) results = await scanDependencies(depsPath)
-    else if (folderPath) results = await iterateFiles(folderPath)
-    return Array.isArray(results) ? results : []
+    tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'codebase-scanner-pypi-'))
+    if (!jsonOutput) {
+      console.log(chalk.blue(`Created temporary directory: ${tempDir}`))
+      console.log(chalk.blue(`Downloading package '${packageName}'...`))
+    }
+
+    try {
+      execSync(`python3 -m pip download ${packageName} --no-deps -d "${tempDir}"`, { stdio: 'pipe' })
+    } catch (error) {
+      console.error(chalk.red(`Error downloading package '${packageName}': ${error.stderr?.toString() || error.message}`))
+      if (error.message.includes('command not found') || error.stderr?.toString().includes('command not found')) {
+        console.error(chalk.yellow('Please ensure Python3 and Pip are installed and available in your PATH.'))
+      }
+      throw error
+    }
+
+    const files = await fs.promises.readdir(tempDir)
+    const downloadedFile = files[0]
+    if (!downloadedFile) throw new Error(`Could not find downloaded package file for ${packageName} in ${tempDir}`)
+    const downloadedFilePath = path.join(tempDir, downloadedFile)
+    if (!jsonOutput) console.log(chalk.blue(`Downloaded ${downloadedFile}`))
+
+    const extractDir = path.join(tempDir, 'package')
+    await fs.promises.mkdir(extractDir)
+    if (!jsonOutput) console.log(chalk.blue(`Extracting ${downloadedFile} to ${extractDir}...`))
+
+    if (downloadedFile.endsWith('.whl') || downloadedFile.endsWith('.zip')) {
+      try {
+        execSync(`unzip "${downloadedFilePath}" -d "${extractDir}"`, { stdio: 'pipe' })
+      } catch (error) {
+        console.error(chalk.red(`Error extracting ${downloadedFile} with unzip: ${error.stderr?.toString() || error.message}`))
+        if (error.message.includes('command not found') || error.stderr?.toString().includes('command not found')) {
+          console.error(chalk.yellow('Please ensure the unzip command is installed and available in your PATH.'))
+        }
+        throw error
+      }
+    } else if (downloadedFile.endsWith('.tar.gz')) {
+      try {
+        await x({ file: downloadedFilePath, cwd: extractDir, strip: 1 })
+      } catch (error) {
+        console.error(chalk.red(`Error extracting ${downloadedFile} with tar: ${error.message}`))
+        throw error
+      }
+    } else {
+      throw new Error(`Unsupported package format: ${downloadedFile}`)
+    }
+
+    if (!jsonOutput) console.log(chalk.blue(`Scanning extracted package content...`))
+    return await iterateFiles(extractDir, options)
   } catch (error) {
-    console.error(chalk.red(`An unexpected error occurred in main execution: ${error.message}`))
-    return []
+    console.error(chalk.red(`An error occurred during PyPI package scanning: ${error.message}`))
+  } finally {
+    if (tempDir) {
+      if (!jsonOutput) console.log(chalk.blue(`Cleaning up temporary directory: ${tempDir}`))
+      try {
+        await fs.promises.rm(tempDir, { recursive: true, force: true })
+      } catch (rmErr) {
+        console.error(chalk.yellow(`Warning: Failed to clean up temp directory ${tempDir}: ${rmErr.message}`))
+      }
+    }
   }
+}
+
+/*
+  Scan all npm dependencies in a package.json file.
+*/
+async function scanNpmDependencies(packageJsonDir, options) {
+  const { json: jsonOutput } = options
+  const packageJsonPath = path.join(packageJsonDir, 'package.json')
+  if (!jsonOutput) console.log(chalk.blue(`Scanning npm dependencies from: ${packageJsonPath}`))
+  try {
+    if (!fs.existsSync(packageJsonDir)) {
+      throw new Error(`Directory not found: ${packageJsonDir}`)
+    }
+    if (!fs.existsSync(packageJsonPath)) {
+      throw new Error(`package.json not found in: ${packageJsonDir}`)
+    }
+
+    const packageJsonContent = await fs.promises.readFile(packageJsonPath, 'utf-8')
+    const packageJson = JSON.parse(packageJsonContent)
+
+    const dependencies = {
+      ...(packageJson.dependencies || {}),
+      ...(packageJson.devDependencies || {}),
+    }
+
+    const dependencyNames = Object.keys(dependencies)
+    if (dependencyNames.length === 0) {
+      if (!jsonOutput) console.log(chalk.yellow(`No npm dependencies found in ${packageJsonPath}`))
+      return []
+    }
+
+    if (!jsonOutput) console.log(chalk.blue(`Found ${dependencyNames.length} npm dependencies/devDependencies to scan.`))
+    const allResults = []
+
+    for (const depName of dependencyNames) {
+      const depVersion = dependencies[depName]
+      const fullDepName = depVersion.startsWith('file:') || depVersion.startsWith('link:') || depVersion.startsWith('/')
+        ? depName // Avoid trying to npm pack local file/link dependencies
+        : `${depName}` // Could add `@${depVersion}` but npm pack usually fetches latest/specified by registry
+
+      if (fullDepName !== depName) {
+        if (!jsonOutput) console.log(chalk.gray(`Skipping local npm dependency: ${depName} (${depVersion})`))
+        continue
+      }
+
+      try {
+        const results = await scanNpmPackage(fullDepName, options)
+        if (results) allResults.push(...results)
+      } catch (error) {
+        console.error(chalk.red(`Failed to scan npm dependency ${fullDepName}: ${error.message}`))
+      }
+      if (!jsonOutput) console.log(chalk.blue("----------------------------------------"))
+    }
+    return allResults
+  } catch (error) {
+    console.error(chalk.red(`Error processing npm dependencies from ${packageJsonPath}: ${error.message}`))
+    throw error
+  }
+}
+
+/*
+  Scan all PyPI dependencies in a requirements.txt file.
+*/
+async function scanPypiDependencies(requirementsDir, options) {
+  const { json: jsonOutput } = options
+  const requirementsPath = path.join(requirementsDir, 'requirements.txt')
+  if (!jsonOutput) console.log(chalk.blue(`Scanning PyPI dependencies from: ${requirementsPath}`))
+
+  try {
+    if (!fs.existsSync(requirementsDir)) {
+      throw new Error(`Directory not found: ${requirementsDir}`)
+    }
+    if (!fs.existsSync(requirementsPath)) {
+      throw new Error(`requirements.txt not found in: ${requirementsDir}`)
+    }
+
+    const requirementsContent = await fs.promises.readFile(requirementsPath, 'utf-8')
+    const lines = requirementsContent.split('\n')
+
+    const dependencyNames = lines
+      .map(line => line.trim())
+      .filter(line => line && !line.startsWith('#'))
+      .map(line => line.split(/[=<>~]/)[0].trim())
+      .filter(Boolean)
+
+    if (dependencyNames.length === 0) {
+      if (!jsonOutput) console.log(chalk.yellow(`No PyPI dependencies found in ${requirementsPath}`))
+      return []
+    }
+
+    if (!jsonOutput) console.log(chalk.blue(`Found ${dependencyNames.length} PyPI dependencies to scan.`))
+    const allResults = []
+
+    for (const depName of dependencyNames) {
+      if (depName.startsWith('-')) {
+        if (!jsonOutput) console.log(chalk.gray(`Skipping line in requirements.txt: ${depName}`))
+        continue
+      }
+      try {
+        const results = await scanPypiPackage(depName, options)
+        if (results) allResults.push(...results)
+      } catch (error) {
+        console.error(chalk.red(`Failed to scan PyPI dependency ${depName}: ${error.message}`))
+      }
+      if (!jsonOutput) console.log(chalk.blue("----------------------------------------"))
+    }
+    return allResults
+  } catch (error) {
+    console.error(chalk.red(`Error processing PyPI dependencies from ${requirementsPath}: ${error.message}`))
+    throw error
+  }
+}
+
+/*
+  Wrapper functions for command actions
+*/
+async function runScan(scanFunction, target, options) {
+  try {
+    const results = await scanFunction(target, options)
+    const flatResults = deepFlatten(Array.isArray(results) ? results : [])
+    const detections = flatResults.filter(r => r && typeof r === 'object' && r.triggered)
+    const exitCode = detections.some(r => r.level === 'malicious') ? 1 : 0
+
+    if (options.json) {
+      console.log(JSON.stringify(detections, null, 2))
+    } else if (detections.length === 0) {
+      console.log(chalk.green('✅ No malicious or suspicious signatures found.'))
+    }
+
+    process.exit(exitCode)
+  } catch (error) {
+    console.error(chalk.red(`An unexpected error occurred: ${error.message}`))
+    process.exit(2)
+  }
+}
+
+async function runLocalScan(folder, options) {
+  const targetFolder = folder || process.cwd()
+  const combinedOptions = { ...program.opts(), ...options }
+  await runScan(iterateFiles, targetFolder, combinedOptions)
+}
+
+async function runNpmScan(packageName, options) {
+  const combinedOptions = { ...program.opts(), ...options }
+  await runScan(scanNpmPackage, packageName, combinedOptions)
+}
+
+async function runPypiScan(packageName, options) {
+  const combinedOptions = { ...program.opts(), ...options }
+  await runScan(scanPypiPackage, packageName, combinedOptions)
+}
+
+async function runDepsScan(dirPath, options) {
+  const combinedOptions = { ...program.opts(), ...options }
+  await runScan(scanDependencies, dirPath, combinedOptions)
 }
 
 /*
@@ -263,16 +483,6 @@ function deepFlatten(arr) {
   return arr.reduce((acc, val) => Array.isArray(val) ? acc.concat(deepFlatten(val)) : acc.concat(val), [])
 }
 
-/*
-  Main execution
-*/
-try {
-  const result = await main()
-  const detections = deepFlatten(result).filter(r => r && typeof r === 'object').filter(r => r.triggered)
-  const exitCode = detections.some(r => r.triggered && r.level !== 'warning') ? 1 : 0
-  if (jsonOutput) console.log(JSON.stringify(detections, null, 2))
-  process.exit(exitCode)
-} catch (error) {
-  console.error(chalk.red(`An unexpected error occurred: ${error.message}`))
-  process.exit(2)
-}
+
+program.parse(process.argv)
+if (!process.argv.slice(2).length || !program.args.length) program.outputHelp()
