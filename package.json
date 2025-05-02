@@ -1,6 +1,6 @@
 {
   "name": "@mathiscode/codebase-scanner",
-  "version": "1.3.8",
+  "version": "1.4.0",
   "description": "Scan a codebase for malware signatures",
   "author": {
     "name": "Jay Mathis",
