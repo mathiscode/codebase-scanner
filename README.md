@@ -84,6 +84,13 @@ npx @mathiscode/codebase-scanner@latest pypi package-name
 # ☠️ Found malicious signature Obfuscated Python (PyArmor Hook) in file /path/to/codebase/malware.py
 ```
 
+### Install as a CLI
+
+```bash
+npm install -g @mathiscode/codebase-scanner@latest
+codebase-scanner --help
+```
+
 ---
 
 The tool will exit with a non-zero exit code if malicious code is found. This can be used to fail CI pipelines.

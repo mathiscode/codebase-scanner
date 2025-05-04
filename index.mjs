@@ -12,6 +12,7 @@ import path from 'node:path'
 import os from 'node:os'
 import { execSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
+import { realpathSync } from 'node:fs'
 
 import chalk from 'chalk'
 import { program } from 'commander'
@@ -490,7 +491,29 @@ export function deepFlatten(arr) {
   return arr.reduce((acc, val) => Array.isArray(val) ? acc.concat(deepFlatten(val)) : acc.concat(val), [])
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+// Determine if the script is the main module being run
+const isMainScript = (() => {
+  try {
+    const mainScriptPath = realpathSync(process.argv[1])
+    const currentScriptPath = fileURLToPath(import.meta.url)
+    return mainScriptPath === currentScriptPath
+  } catch (error) {
+    if (process.env.NODE_ENV !== 'test') {
+        console.warn(chalk.yellow(`Warning: Could not determine main script path: ${error.message}`))
+    }
+    return false
+  }
+})()
+
+if (isMainScript) {
   program.parse(process.argv)
-  if (!process.argv.slice(2).length || !program.args.length) program.outputHelp()
+  const commandSpecified = program.args.length > 0 && program.commands.some(cmd => cmd.name() === program.args[0])
+  if (!commandSpecified && process.argv.length <= 2) {
+    program.outputHelp()
+  } else if (!commandSpecified && program.args.length === 0 && process.argv.length > 2) {
+    const hasCommandArg = program.args.some(arg => program.commands.some(cmd => cmd.name() === arg))
+    if (!hasCommandArg) program.outputHelp()
+  } else if (program.args.length === 0 && !commandSpecified) {
+    program.outputHelp()
+  }
 }
