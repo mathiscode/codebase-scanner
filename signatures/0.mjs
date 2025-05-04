@@ -58,13 +58,6 @@ export default [
   },
 
   {
-    name: 'Eval',
-    signature: 'eval(',
-    extensions: ['js', 'mjs', 'cjs', 'ts', 'mts', 'cts', 'jsx', 'tsx'],
-    level: 'warning'
-  },
-
-  {
     name: 'Evaluated Response (res)',
     signature: 'eval(res',
     extensions: ['js', 'mjs', 'cjs', 'ts', 'mts', 'cts', 'jsx', 'tsx'],
@@ -76,6 +69,13 @@ export default [
     signature: 'eval(err',
     extensions: ['js', 'mjs', 'cjs', 'ts', 'mts', 'cts', 'jsx', 'tsx'],
     level: 'malicious'
+  },
+
+  {
+    name: 'Eval',
+    signature: 'eval(',
+    extensions: ['js', 'mjs', 'cjs', 'ts', 'mts', 'cts', 'jsx', 'tsx'],
+    level: 'warning'
   },
 
   {

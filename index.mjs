@@ -11,6 +11,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import os from 'node:os'
 import { execSync } from 'node:child_process'
+import { fileURLToPath } from 'node:url'
 
 import chalk from 'chalk'
 import { program } from 'commander'
@@ -73,7 +74,7 @@ program
 /*
   Iterate over all files in a folder and scan them for malicious code.
 */
-async function iterateFiles(folder, options) {
+export async function iterateFiles(folder, options) {
   const { json: jsonOutput, all } = options
   if (!fs.existsSync(folder)) return console.error(`Invalid path: ${folder}`)
   const files = fs.readdirSync(folder)
@@ -119,7 +120,7 @@ async function iterateFiles(folder, options) {
 /*
   Scan a file for malicious code.
 */
-async function scanFile(file, signatures, options) {
+export async function scanFile(file, signatures, options) {
   const { limit, fix, json: jsonOutput } = options
   const stat = await fs.promises.stat(file)
   if (stat.size > limit) return
@@ -160,7 +161,7 @@ async function scanFile(file, signatures, options) {
 /*
   Scan all dependencies specified in a directory (package.json or requirements.txt).
 */
-async function scanDependencies(dependencyDir, options) {
+export async function scanDependencies(dependencyDir, options) {
   const { json: jsonOutput } = options
   if (!jsonOutput) console.log(chalk.blue(`Scanning dependencies in directory: ${dependencyDir}`))
 
@@ -211,7 +212,7 @@ async function scanDependencies(dependencyDir, options) {
 /*
   Scan an npm package.
 */
-async function scanNpmPackage(packageName, options) {
+export async function scanNpmPackage(packageName, options) {
   const { json: jsonOutput } = options
   let tempDir
   if (!jsonOutput) console.log(chalk.blue(`Attempting to scan npm package: ${packageName}`))
@@ -258,7 +259,7 @@ async function scanNpmPackage(packageName, options) {
 /*
   Scan a PyPI package.
 */
-async function scanPypiPackage(packageName, options) {
+export async function scanPypiPackage(packageName, options) {
   const { json: jsonOutput } = options
   let tempDir
   if (!jsonOutput) console.log(chalk.blue(`Attempting to scan PyPI package: ${packageName}`))
@@ -330,7 +331,7 @@ async function scanPypiPackage(packageName, options) {
 /*
   Scan all npm dependencies in a package.json file.
 */
-async function scanNpmDependencies(packageJsonDir, options) {
+export async function scanNpmDependencies(packageJsonDir, options) {
   const { json: jsonOutput } = options
   const packageJsonPath = path.join(packageJsonDir, 'package.json')
   if (!jsonOutput) console.log(chalk.blue(`Scanning npm dependencies from: ${packageJsonPath}`))
@@ -388,7 +389,7 @@ async function scanNpmDependencies(packageJsonDir, options) {
 /*
   Scan all PyPI dependencies in a requirements.txt file.
 */
-async function scanPypiDependencies(requirementsDir, options) {
+export async function scanPypiDependencies(requirementsDir, options) {
   const { json: jsonOutput } = options
   const requirementsPath = path.join(requirementsDir, 'requirements.txt')
   if (!jsonOutput) console.log(chalk.blue(`Scanning PyPI dependencies from: ${requirementsPath}`))
@@ -441,7 +442,7 @@ async function scanPypiDependencies(requirementsDir, options) {
 /*
   Wrapper functions for command actions
 */
-async function runScan(scanFunction, target, options) {
+export async function runScan(scanFunction, target, options) {
   try {
     const results = await scanFunction(target, options)
     const flatResults = deepFlatten(Array.isArray(results) ? results : [])
@@ -461,23 +462,23 @@ async function runScan(scanFunction, target, options) {
   }
 }
 
-async function runLocalScan(folder, options) {
+export async function runLocalScan(folder, options) {
   const targetFolder = folder || process.cwd()
   const combinedOptions = { ...program.opts(), ...options }
   await runScan(iterateFiles, targetFolder, combinedOptions)
 }
 
-async function runNpmScan(packageName, options) {
+export async function runNpmScan(packageName, options) {
   const combinedOptions = { ...program.opts(), ...options }
   await runScan(scanNpmPackage, packageName, combinedOptions)
 }
 
-async function runPypiScan(packageName, options) {
+export async function runPypiScan(packageName, options) {
   const combinedOptions = { ...program.opts(), ...options }
   await runScan(scanPypiPackage, packageName, combinedOptions)
 }
 
-async function runDepsScan(dirPath, options) {
+export async function runDepsScan(dirPath, options) {
   const combinedOptions = { ...program.opts(), ...options }
   await runScan(scanDependencies, dirPath, combinedOptions)
 }
@@ -485,10 +486,11 @@ async function runDepsScan(dirPath, options) {
 /*
   Utility function to flatten our results
 */
-function deepFlatten(arr) {
+export function deepFlatten(arr) {
   return arr.reduce((acc, val) => Array.isArray(val) ? acc.concat(deepFlatten(val)) : acc.concat(val), [])
 }
 
-
-program.parse(process.argv)
-if (!process.argv.slice(2).length || !program.args.length) program.outputHelp()
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  program.parse(process.argv)
+  if (!process.argv.slice(2).length || !program.args.length) program.outputHelp()
+}

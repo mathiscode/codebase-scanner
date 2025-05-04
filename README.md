@@ -19,7 +19,7 @@ Scan a folder, repository, npm/pypi package, or dependencies for malicious signa
 ## Usage
 
 ```text
-Usage: index [options] [command]
+Usage: codebase-scanner [options] [command]
 
 Scan a folder, repository, npm/pypi package, or dependencies for malicious signatures.
 
@@ -139,6 +139,6 @@ Inspired by [this experience](https://www.reddit.com/r/Upwork/comments/14nat71/s
 
 **PRs welcome!**
 
-Have you found a new signature? Please submit a PR with the signature added to [`signatures.js`](signatures.js) and a sample file in the [`samples/`](samples/) directory.
+Have you found a new signature? Please submit a PR with the signature added to [`signatures/`](signatures/) and a sample file in the [`samples/`](samples/) directory. Currently, signature file `0.js` is Javascript signatures and `1.js` is Python signatures.
 
 To see samples of some of these malicious codebases, check out [this repository](https://github.com/rubenmarcus/malicious-repositories).
