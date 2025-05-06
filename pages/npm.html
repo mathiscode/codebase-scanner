@@ -14,7 +14,7 @@
         <p>A whitelist/false positive system is coming soon.</p>
         <p>If a package is not listed here, it either has not been scanned yet or did not trigger any detections.</p>
 
-        <a href='detections.json' target='_blank'>Raw JSON Detections Data</a>
+        <a href='detections.npm.json' target='_blank'>Raw JSON Detections Data</a>
     </div>
 
     <div id='search-container'>
@@ -26,13 +26,12 @@
     </div>
 
     <script>
-        let allPackages = [] // To store all fetched package data
+        let allPackages = []
         const resultsContainer = document.getElementById('results-container')
         const searchInput = document.getElementById('search-input')
 
-        // Function to render package cards
         function renderPackages(packagesToRender) {
-            resultsContainer.innerHTML = '' // Clear previous results
+            resultsContainer.innerHTML = ''
 
             if (packagesToRender.length === 0) {
                 resultsContainer.innerHTML = '<p class="no-results">No matching packages found.</p>'
@@ -61,13 +60,11 @@
                     const toggle = card.querySelector('.findings-toggle')
                     const detailsDiv = card.querySelector('.findings-details')
 
-                    // Clear previous content (like the <pre> if it existed)
                     detailsDiv.innerHTML = ''
 
                     let findingsData = []
                     try {
                         const parsed = JSON.parse(pkg.findings_json)
-                        // Ensure it's an array of objects
                         if (Array.isArray(parsed)) {
                             findingsData = parsed.filter(item => item && typeof item === 'object')
                         } else {
@@ -75,14 +72,12 @@
                         }
                     } catch (e) {
                         console.error('Error parsing findings_json for package:', pkg.name, e)
-                        // Optionally display raw JSON or an error message if parsing fails
                         const errorMsg = document.createElement('p')
                         errorMsg.textContent = 'Could not display findings (invalid format).'
                         errorMsg.style.color = 'red'
                         detailsDiv.appendChild(errorMsg)
                     }
 
-                    // Only create table if we have valid data
                     if (findingsData.length > 0) {
                         const table = document.createElement('table')
                         const thead = document.createElement('thead')
@@ -96,18 +91,15 @@
                             </tr>
                         `
 
-                        // Filter for triggered findings only before creating rows
                         const triggeredFindings = findingsData.filter(finding => finding.triggered === true)
 
                         if (triggeredFindings.length === 0) {
-                            // If parsing was successful but no findings were *triggered*
                             const noTriggeredMsg = document.createElement('p')
                             noTriggeredMsg.textContent = 'No triggered detections found in the scan data for this package.'
                             detailsDiv.appendChild(noTriggeredMsg)
                         } else {
                             triggeredFindings.forEach(finding => {
                                 const tr = document.createElement('tr')
-                                // Extract relevant data based on actual JSON structure
                                 tr.innerHTML = `
                                     <td>${finding.name || 'N/A'}</td>
                                     <td>${finding.level || 'N/A'}</td>
@@ -126,11 +118,9 @@
                         detailsDiv.appendChild(noFindingsMsg)
                     }
 
-                    toggle.textContent = 'Show Findings' // Set initial text
+                    toggle.textContent = 'Show Findings'
                     toggle.onclick = () => {
-                        // Toggle a class instead of inline style
                         detailsDiv.classList.toggle('visible')
-                        // Update button text based on the new state
                         toggle.textContent = detailsDiv.classList.contains('visible') ? 'Hide Findings' : 'Show Findings'
                     }
                 }
@@ -150,16 +140,15 @@
             const filteredPackages = allPackages.filter(pkg =>
                 pkg.name.toLowerCase().includes(searchTerm)
             )
+
             renderPackages(filteredPackages)
         }
 
-        // Add event listener for search input
         searchInput.addEventListener('input', filterPackages)
 
-        // Fetch data and initialize
         async function fetchData() {
             try {
-                const response = await fetch('detections.json')
+                const response = await fetch('detections.npm.json')
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`)
                 }
@@ -171,7 +160,6 @@
             }
         }
 
-        // Initial data fetch
         fetchData()
     </script>
 </body>
