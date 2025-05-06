@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      all-the-package-names:
+        specifier: ^2.0.2147
+        version: 2.0.2147
       chalk:
         specifier: ^5.3.0
         version: 5.4.1
@@ -328,6 +331,10 @@ packages:
 
   '@types/yargs@17.0.33':
     resolution: {integrity: sha512-WpxBCKWPLr4xSsHgz511rFJAM+wS28w2zEO1QDNY5zM/S8ok70NNfztH0xwhqKyaK0OHCbN98LDAZuy1ctxDkA==}
+
+  all-the-package-names@2.0.2147:
+    resolution: {integrity: sha512-W1OxGH2GfdoKdQa5ZjG4xyPnpYllRFf675EDVhJkf2e1p+wNxdb8L/cEOTUVp1nuj4/WPazbUYzWuzxmrmVrJA==}
+    hasBin: true
 
   ansi-escapes@4.3.2:
     resolution: {integrity: sha512-gKXj5ALrKWQLsYG9jlTRmR/xKluxHV+Z9QEwNIgCfM1/uwPMCuzVVnh5mwTd+OuBZcwSIMbqssNWRm1lE51QaQ==}
@@ -1584,6 +1591,8 @@ snapshots:
   '@types/yargs@17.0.33':
     dependencies:
       '@types/yargs-parser': 21.0.3
+
+  all-the-package-names@2.0.2147: {}
 
   ansi-escapes@4.3.2:
     dependencies:

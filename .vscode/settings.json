@@ -1,0 +1,11 @@
+{
+  "sqltools.useNodeRuntime": true,
+  "sqltools.connections": [
+    {
+      "previewLimit": 50,
+      "driver": "SQLite",
+      "name": "codebase-scanner-npm-registry",
+      "database": "/tmp/codebase-scanner-npm-logs/codebase-scanner-npm-registry-results.sqlite"
+    }
+  ]
+}

@@ -1,0 +1,135 @@
+body {
+  font-family: sans-serif;
+  margin: 20px;
+  background-color: #f4f4f4;
+  color: #333;
+}
+
+h1 {
+  text-align: center;
+  color: #555;
+}
+
+.header {
+  text-align: center;
+  color: #555;
+  margin-bottom: 20px;
+}
+
+#search-container {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+#search-input {
+  padding: 10px;
+  width: 80%;
+  max-width: 500px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+#results-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.package-card {
+  background-color: #fff;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  padding: 15px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  overflow: hidden;
+}
+
+.package-card h2 {
+  margin-top: 0;
+  margin-bottom: 10px;
+  font-size: 1.2em;
+  color: #007bff;
+  word-break: break-all; /* Prevent long names from overflowing */
+}
+
+.package-card p {
+  margin: 5px 0;
+  font-size: 0.9em;
+}
+
+.package-card strong {
+  color: #e74c3c; /* Highlight detections count */
+}
+
+.package-card .details {
+  margin-top: 10px;
+  font-size: 0.8em;
+  color: #666;
+}
+
+.package-card .findings-toggle {
+  cursor: pointer;
+  /* Make it look like a button */
+  display: inline-block;
+  margin-top: 10px;
+  padding: 5px 10px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.8em;
+  text-decoration: none; /* Remove underline */
+  transition: background-color 0.2s ease;
+}
+
+.package-card .findings-toggle:hover {
+  background-color: #0056b3;
+}
+
+.package-card .findings-details {
+  display: none; /* Initially hidden */
+  margin-top: 5px;
+  padding: 10px;
+  background-color: #f9f9f9;
+  border: 1px solid #eee;
+  border-radius: 4px;
+  font-size: 0.8em;
+  max-height: 200px;
+  overflow-y: auto;
+  white-space: pre-wrap; /* Keep formatting */
+  word-break: break-word;
+}
+
+.package-card .findings-details.visible { /* Class to show details */
+  display: block;
+}
+
+.package-card .findings-details table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+  font-size: 0.9em; /* Adjust font size inside table */
+}
+
+.package-card .findings-details th,
+.package-card .findings-details td {
+  border: 1px solid #eee;
+  padding: 4px 6px;
+  text-align: left;
+  vertical-align: top;
+  word-break: break-word; /* Allow long strings to wrap */
+}
+
+.package-card .findings-details th {
+  background-color: #f0f0f0;
+  font-weight: bold;
+  white-space: nowrap; /* Prevent header text wrapping */
+  width: 1%; /* Set minimum width based on content */
+}
+
+.no-results {
+  text-align: center;
+  grid-column: 1 / -1; /* Span all columns */
+  color: #777;
+  margin-top: 20px;
+}

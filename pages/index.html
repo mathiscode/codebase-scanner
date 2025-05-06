@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <title>Codebase Scanner - NPM Detections</title>
+    <link rel='stylesheet' href='style.css'>
+</head>
+<body>
+    <div class='header'>
+        <h1>NPM Registry Malware Scan Results</h1>
+        <h2>Scanned with <a href='https://github.com/mathiscode/codebase-scanner' target='_blank'>codebase-scanner</a> by <a href='https://github.com/mathiscode' target='_blank'>Jay Mathis</a></h2>
+        <p>Please note that at this time, many legitimate packages may use techniques that trigger false positives. We err on the side of caution, so further investigation is recommended.</p>
+        <p>A whitelist/false positive system is coming soon.</p>
+        <p>If a package is not listed here, it either has not been scanned yet or did not trigger any detections.</p>
+
+        <a href='detections.json' target='_blank'>Raw JSON Detections Data</a>
+    </div>
+
+    <div id='search-container'>
+        <input type='text' id='search-input' placeholder='Search packages...'>
+    </div>
+
+    <div id='results-container'>
+        <p>Loading data...</p>
+    </div>
+
+    <script>
+        let allPackages = [] // To store all fetched package data
+        const resultsContainer = document.getElementById('results-container')
+        const searchInput = document.getElementById('search-input')
+
+        // Function to render package cards
+        function renderPackages(packagesToRender) {
+            resultsContainer.innerHTML = '' // Clear previous results
+
+            if (packagesToRender.length === 0) {
+                resultsContainer.innerHTML = '<p class="no-results">No matching packages found.</p>'
+                return
+            }
+
+            packagesToRender.forEach(pkg => {
+                const card = document.createElement('div')
+                card.className = 'package-card'
+
+                const scannedDate = new Date(pkg.scanned_at * 1000).toLocaleString()
+                const findingsExist = pkg.findings_json && pkg.findings_json !== 'null'
+
+                card.innerHTML = `
+                    <h2><a href='https://www.npmjs.com/package/${pkg.name}' target='_blank' rel='noopener noreferrer'>${pkg.name}</a></h2>
+                    <p>Detections: <strong>${pkg.detections_count}</strong></p>
+                    <div class='details'>
+                        <span>Files Scanned: ${pkg.files_scanned ?? 'N/A'}</span><br>
+                        <span>Scanned At: ${scannedDate}</span>
+                    </div>
+                    ${findingsExist ? '<span class="findings-toggle">Show/Hide Findings</span>' : ''}
+                    ${findingsExist ? '<div class="findings-details"><table></table></div>' : ''}
+                `
+
+                if (findingsExist) {
+                    const toggle = card.querySelector('.findings-toggle')
+                    const detailsDiv = card.querySelector('.findings-details')
+
+                    // Clear previous content (like the <pre> if it existed)
+                    detailsDiv.innerHTML = ''
+
+                    let findingsData = []
+                    try {
+                        const parsed = JSON.parse(pkg.findings_json)
+                        // Ensure it's an array of objects
+                        if (Array.isArray(parsed)) {
+                            findingsData = parsed.filter(item => item && typeof item === 'object')
+                        } else {
+                            console.warn('Parsed findings_json is not an array for package:', pkg.name)
+                        }
+                    } catch (e) {
+                        console.error('Error parsing findings_json for package:', pkg.name, e)
+                        // Optionally display raw JSON or an error message if parsing fails
+                        const errorMsg = document.createElement('p')
+                        errorMsg.textContent = 'Could not display findings (invalid format).'
+                        errorMsg.style.color = 'red'
+                        detailsDiv.appendChild(errorMsg)
+                    }
+
+                    // Only create table if we have valid data
+                    if (findingsData.length > 0) {
+                        const table = document.createElement('table')
+                        const thead = document.createElement('thead')
+                        const tbody = document.createElement('tbody')
+
+                        thead.innerHTML = `
+                            <tr>
+                                <th>Rule Name</th>
+                                <th>Level</th>
+                                <th>File</th>
+                            </tr>
+                        `
+
+                        // Filter for triggered findings only before creating rows
+                        const triggeredFindings = findingsData.filter(finding => finding.triggered === true)
+
+                        if (triggeredFindings.length === 0) {
+                            // If parsing was successful but no findings were *triggered*
+                            const noTriggeredMsg = document.createElement('p')
+                            noTriggeredMsg.textContent = 'No triggered detections found in the scan data for this package.'
+                            detailsDiv.appendChild(noTriggeredMsg)
+                        } else {
+                            triggeredFindings.forEach(finding => {
+                                const tr = document.createElement('tr')
+                                // Extract relevant data based on actual JSON structure
+                                tr.innerHTML = `
+                                    <td>${finding.name || 'N/A'}</td>
+                                    <td>${finding.level || 'N/A'}</td>
+                                    <td>${finding.file || finding.path || 'N/A'}</td>
+                                `
+                                tbody.appendChild(tr)
+                            })
+
+                            table.appendChild(thead)
+                            table.appendChild(tbody)
+                            detailsDiv.appendChild(table)
+                        }
+                    } else if (!detailsDiv.querySelector('p')) {
+                        const noFindingsMsg = document.createElement('p')
+                        noFindingsMsg.textContent = 'No specific findings data available in JSON.'
+                        detailsDiv.appendChild(noFindingsMsg)
+                    }
+
+                    toggle.textContent = 'Show Findings' // Set initial text
+                    toggle.onclick = () => {
+                        // Toggle a class instead of inline style
+                        detailsDiv.classList.toggle('visible')
+                        // Update button text based on the new state
+                        toggle.textContent = detailsDiv.classList.contains('visible') ? 'Hide Findings' : 'Show Findings'
+                    }
+                }
+
+                resultsContainer.appendChild(card)
+            })
+        }
+
+        // Function to filter packages based on search input
+        function filterPackages() {
+            const searchTerm = searchInput.value.toLowerCase().trim()
+            if (!searchTerm) {
+                renderPackages(allPackages) // Show all if search is empty
+                return
+            }
+
+            const filteredPackages = allPackages.filter(pkg =>
+                pkg.name.toLowerCase().includes(searchTerm)
+            )
+            renderPackages(filteredPackages)
+        }
+
+        // Add event listener for search input
+        searchInput.addEventListener('input', filterPackages)
+
+        // Fetch data and initialize
+        async function fetchData() {
+            try {
+                const response = await fetch('detections.json')
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`)
+                }
+                allPackages = await response.json()
+                renderPackages(allPackages) // Initial render
+            } catch (error) {
+                console.error('Error fetching or processing detections data:', error)
+                resultsContainer.innerHTML = '<p class="no-results">Error loading data. Please check the console and ensure detections.json exists and is valid.</p>'
+            }
+        }
+
+        // Initial data fetch
+        fetchData()
+    </script>
+</body>
+</html>
