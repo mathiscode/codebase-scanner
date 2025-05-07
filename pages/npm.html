@@ -5,6 +5,22 @@
     <meta name='viewport' content='width=device-width, initial-scale=1.0'>
     <title>Codebase Scanner - NPM Detections</title>
     <link rel='stylesheet' href='style.css'>
+    <style>
+        /* Optional: Add a loading indicator style */
+        .loading-indicator {
+            text-align: center;
+            padding: 20px;
+            font-style: italic;
+            color: #666;
+            display: none; /* Hidden by default */
+        }
+        .search-note {
+            font-size: 0.9em;
+            color: #555;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+    </style>
 </head>
 <body>
     <div class='header'>
@@ -14,7 +30,10 @@
         <p>A whitelist/false positive system is coming soon.</p>
         <p>If a package is not listed here, it either has not been scanned yet or did not trigger any detections.</p>
 
-        <a href='detections.npm.json' target='_blank'>Raw JSON Detections Data</a>
+        <p style='display: none;'>
+          Loaded Chunks:
+          <span id='loaded-chunks'></span>
+        </p>
     </div>
 
     <div id='search-container'>
@@ -24,143 +43,368 @@
     <div id='results-container'>
         <p>Loading data...</p>
     </div>
+    <div id='loading-indicator' class='loading-indicator'>Loading more packages...</div>
 
     <script>
-        let allPackages = []
+        let allLoadedPackages = [] // Holds packages loaded from all chunks so far
+        let chunkFiles = [] // List of all available chunk filenames (e.g., ['a.json', 'b.json'])
+        let currentChunkIndex = 0 // Index of the next chunk to load for scrolling
+        let isLoading = false // Flag to prevent multiple simultaneous loads (for scrolling or search)
+        let allChunksLoaded = false // Flag to indicate if all chunks have been loaded via scrolling
+        let loadedChunkFiles = new Set() // Tracks filenames of chunks already loaded
+
         const resultsContainer = document.getElementById('results-container')
         const searchInput = document.getElementById('search-input')
+        const loadingIndicator = document.getElementById('loading-indicator')
+        const dataBasePath = 'data/npm/'
+        const loadedChunksSpan = document.getElementById('loaded-chunks')
 
-        function renderPackages(packagesToRender) {
-            resultsContainer.innerHTML = ''
+        // Function to update the display of loaded chunks
+        function updateLoadedChunksDisplay() {
+            const loadedFilesArray = Array.from(loadedChunkFiles).sort() // Convert Set to sorted array
+            loadedChunksSpan.textContent = loadedFilesArray.length > 0 ? loadedFilesArray.join(', ') : 'None'
+        }
 
-            if (packagesToRender.length === 0) {
-                resultsContainer.innerHTML = '<p class="no-results">No matching packages found.</p>'
-                return
-            }
+        // Function to render a single package card
+        function createPackageCard(pkg) {
+            const card = document.createElement('div')
+            card.className = 'package-card'
 
-            packagesToRender.forEach(pkg => {
-                const card = document.createElement('div')
-                card.className = 'package-card'
+            const scannedDate = new Date(pkg.scanned_at * 1000).toLocaleString()
+            // Ensure findings_json is treated as a string before parsing
+            const findingsJsonString = pkg.findings_json // Assume it's string | null from DB/JSON
+            const findingsExist = typeof findingsJsonString === 'string' && findingsJsonString !== 'null' && findingsJsonString !== '[]'
 
-                const scannedDate = new Date(pkg.scanned_at * 1000).toLocaleString()
-                const findingsExist = pkg.findings_json && pkg.findings_json !== 'null'
-
-                card.innerHTML = `
+            // Consistent structure for the findings toggle/info area
+            card.innerHTML = `
+                <div class="card-content">
                     <h2><a href='https://www.npmjs.com/package/${pkg.name}' target='_blank' rel='noopener noreferrer'>${pkg.name}</a></h2>
                     <p>Detections: <strong>${pkg.detections_count}</strong></p>
                     <div class='details'>
                         <span>Files Scanned: ${pkg.files_scanned ?? 'N/A'}</span><br>
                         <span>Scanned At: ${scannedDate}</span>
                     </div>
-                    ${findingsExist ? '<span class="findings-toggle">Show/Hide Findings</span>' : ''}
-                    ${findingsExist ? '<div class="findings-details"><table></table></div>' : ''}
-                `
+                </div>
+                <div class='findings-control'>
+                    ${findingsExist ? '<span class="findings-toggle">Show Findings</span>' : '<span class="no-findings-info">No specific findings data available.</span>'}
+                    ${findingsExist ? '<div class="findings-details" style="display: none;"></div>' : ''}
+                </div>
+            `
 
-                if (findingsExist) {
-                    const toggle = card.querySelector('.findings-toggle')
-                    const detailsDiv = card.querySelector('.findings-details')
+            if (findingsExist) {
+                const toggle = card.querySelector('.findings-toggle')
+                const detailsDiv = card.querySelector('.findings-details')
+                // Note: No need to remove .no-findings-info anymore, it's conditionally rendered above
 
-                    detailsDiv.innerHTML = ''
+                // Delay parsing and table generation until toggle
+                toggle.onclick = () => {
+                    const currentlyVisible = detailsDiv.style.display !== 'none'
+                    if (!currentlyVisible && detailsDiv.innerHTML === '') { // Parse and build only once
+                        try {
+                            // Ensure it's a string before parsing
+                            const jsonToParse = typeof findingsJsonString === 'string' ? findingsJsonString : '[]'
+                            const parsed = JSON.parse(jsonToParse)
+                            const findingsData = Array.isArray(parsed) ? parsed.filter(item => item && typeof item === 'object') : []
+                            const triggeredFindings = findingsData.filter(finding => finding.triggered === true)
 
-                    let findingsData = []
-                    try {
-                        const parsed = JSON.parse(pkg.findings_json)
-                        if (Array.isArray(parsed)) {
-                            findingsData = parsed.filter(item => item && typeof item === 'object')
-                        } else {
-                            console.warn('Parsed findings_json is not an array for package:', pkg.name)
-                        }
-                    } catch (e) {
-                        console.error('Error parsing findings_json for package:', pkg.name, e)
-                        const errorMsg = document.createElement('p')
-                        errorMsg.textContent = 'Could not display findings (invalid format).'
-                        errorMsg.style.color = 'red'
-                        detailsDiv.appendChild(errorMsg)
-                    }
-
-                    if (findingsData.length > 0) {
-                        const table = document.createElement('table')
-                        const thead = document.createElement('thead')
-                        const tbody = document.createElement('tbody')
-
-                        thead.innerHTML = `
-                            <tr>
-                                <th>Rule Name</th>
-                                <th>Level</th>
-                                <th>File</th>
-                            </tr>
-                        `
-
-                        const triggeredFindings = findingsData.filter(finding => finding.triggered === true)
-
-                        if (triggeredFindings.length === 0) {
-                            const noTriggeredMsg = document.createElement('p')
-                            noTriggeredMsg.textContent = 'No triggered detections found in the scan data for this package.'
-                            detailsDiv.appendChild(noTriggeredMsg)
-                        } else {
-                            triggeredFindings.forEach(finding => {
-                                const tr = document.createElement('tr')
-                                tr.innerHTML = `
-                                    <td>${finding.name || 'N/A'}</td>
-                                    <td>${finding.level || 'N/A'}</td>
-                                    <td>${finding.file || finding.path || 'N/A'}</td>
+                            if (triggeredFindings.length > 0) {
+                                const table = document.createElement('table')
+                                const thead = document.createElement('thead')
+                                const tbody = document.createElement('tbody')
+                                thead.innerHTML = `
+                                    <tr>
+                                        <th>Rule Name</th>
+                                        <th>Level</th>
+                                        <th>File</th>
+                                    </tr>
                                 `
-                                tbody.appendChild(tr)
-                            })
-
-                            table.appendChild(thead)
-                            table.appendChild(tbody)
-                            detailsDiv.appendChild(table)
+                                triggeredFindings.forEach(finding => {
+                                    const tr = document.createElement('tr')
+                                    tr.innerHTML = `
+                                        <td>${finding.name || 'N/A'}</td>
+                                        <td>${finding.level || 'N/A'}</td>
+                                        <td>${finding.file || finding.path || 'N/A'}</td>
+                                    `
+                                    tbody.appendChild(tr)
+                                })
+                                table.appendChild(thead)
+                                table.appendChild(tbody)
+                                detailsDiv.appendChild(table)
+                            } else {
+                                detailsDiv.innerHTML = '<p>No triggered detections found in scan data.</p>'
+                            }
+                        } catch (e) {
+                            console.error('Error parsing findings_json for package:', pkg.name, e)
+                            detailsDiv.innerHTML = '<p style="color: red;">Could not display findings (invalid format).</p>'
                         }
-                    } else if (!detailsDiv.querySelector('p')) {
-                        const noFindingsMsg = document.createElement('p')
-                        noFindingsMsg.textContent = 'No specific findings data available in JSON.'
-                        detailsDiv.appendChild(noFindingsMsg)
                     }
-
-                    toggle.textContent = 'Show Findings'
-                    toggle.onclick = () => {
-                        detailsDiv.classList.toggle('visible')
-                        toggle.textContent = detailsDiv.classList.contains('visible') ? 'Hide Findings' : 'Show Findings'
-                    }
+                    // Toggle visibility
+                    detailsDiv.style.display = currentlyVisible ? 'none' : 'block'
+                    toggle.textContent = currentlyVisible ? 'Show Findings' : 'Hide Findings'
                 }
+            }
 
-                resultsContainer.appendChild(card)
-            })
+            return card
         }
 
-        // Function to filter packages based on search input
-        function filterPackages() {
-            const searchTerm = searchInput.value.toLowerCase().trim()
-            if (!searchTerm) {
-                renderPackages(allPackages) // Show all if search is empty
+        // Helper function to get the target chunk filename for a search term
+        function getChunkFilenameForTerm(term) {
+            if (!term) return null
+            const firstChar = term.toLowerCase()[0] // Use lowercase for mapping
+            const digits = '0123456789'
+            const alphabet = 'abcdefghijklmnopqrstuvwxyz'
+
+            if (alphabet.includes(firstChar)) {
+                return `${firstChar}.json`
+            } else if (digits.includes(firstChar)) {
+                return `${firstChar}.json`
+            } else {
+                // Anything else (symbols, etc.) goes to other.json
+                return 'other.json'
+            }
+        }
+
+        // Function to render/append packages to the container
+        function renderPackages(packagesToRender) {
+            resultsContainer.innerHTML = '' // Always clear for a full re-render
+
+            const searchTermActive = searchInput.value.trim() !== ''
+
+            if (packagesToRender.length === 0) {
+                if (searchTermActive) {
+                    resultsContainer.innerHTML = '<p class="no-results">No matching packages found in the currently loaded data.</p>'
+                } else {
+                    // Not searching, and no packages to render (i.e., allLoadedPackages is empty during initial load or after clearing search)
+                    resultsContainer.innerHTML = '<p>Type to search or scroll down to load packages.</p>'
+                }
                 return
             }
 
-            const filteredPackages = allPackages.filter(pkg =>
+            // Group packages by starting character
+            const groups = {}
+            const digits = '0123456789'
+            const alphabet = 'abcdefghijklmnopqrstuvwxyz'
+
+            packagesToRender.forEach(pkg => {
+                if (!pkg || !pkg.name) return; // Skip invalid entries
+                const firstChar = pkg.name.toLowerCase()[0]
+                let groupKey = ''
+
+                if (alphabet.includes(firstChar)) {
+                    groupKey = firstChar.toUpperCase()
+                } else if (digits.includes(firstChar)) {
+                    groupKey = firstChar // Use the digit itself as the key
+                } else {
+                    groupKey = 'Other' // Group symbols, etc.
+                }
+
+                if (!groups[groupKey]) {
+                    groups[groupKey] = []
+                }
+                groups[groupKey].push(pkg)
+            })
+
+            // Define the order of groups
+            const groupOrder = [...digits.split(''), ...Array.from(alphabet.toUpperCase()), 'Other'] // List digits individually
+            const sortedGroupKeys = Object.keys(groups).sort((a, b) => {
+                const indexA = groupOrder.indexOf(a)
+                const indexB = groupOrder.indexOf(b)
+                // Handle keys potentially not in groupOrder (shouldn't happen with current logic, but safe)
+                if (indexA === -1 && indexB === -1) return a.localeCompare(b)
+                if (indexA === -1) return 1
+                if (indexB === -1) return -1
+                return indexA - indexB
+            })
+
+
+            // Render groups with headings
+            sortedGroupKeys.forEach(key => {
+                const heading = document.createElement('h3')
+                heading.textContent = key
+                heading.className = 'group-heading'
+                resultsContainer.appendChild(heading)
+
+                groups[key].forEach(pkg => {
+                    const card = createPackageCard(pkg)
+                    resultsContainer.appendChild(card)
+                })
+            })
+        }
+
+
+        // Function to filter packages based on search input (loads chunk if needed)
+        async function filterAndRenderPackages() {
+            if (isLoading) return // Don't interfere if a load is already happening
+
+            const searchTerm = searchInput.value.toLowerCase().trim()
+            if (!searchTerm) {
+                renderPackages(allLoadedPackages) // Show all loaded if search is empty
+                return
+            }
+
+            const targetChunkFile = getChunkFilenameForTerm(searchTerm)
+
+            // Check if the required chunk is valid and not loaded yet
+            if (targetChunkFile && chunkFiles.includes(targetChunkFile) && !loadedChunkFiles.has(targetChunkFile)) {
+                isLoading = true
+                loadingIndicator.textContent = `Loading data for '${targetChunkFile.split('.')[0]}...'`
+                loadingIndicator.style.display = 'block'
+                resultsContainer.innerHTML = '' // Clear previous results while loading specific chunk
+
+                const newPackages = await fetchChunk(targetChunkFile) // Load the specific chunk
+
+                if (newPackages.length > 0) {
+                    // Avoid duplicates if somehow loaded by scroll simultaneously (unlikely but safe)
+                    const currentPackageNames = new Set(allLoadedPackages.map(p => p.name))
+                    const uniqueNewPackages = newPackages.filter(p => !currentPackageNames.has(p.name))
+                    allLoadedPackages.push(...uniqueNewPackages)
+                    allLoadedPackages.sort((a, b) => a.name.localeCompare(b.name)) // Keep sorted
+                }
+                loadedChunkFiles.add(targetChunkFile) // Mark as loaded
+                updateLoadedChunksDisplay() // Update the display
+
+                loadingIndicator.style.display = 'none'
+                isLoading = false
+            }
+
+            // Filter *all* currently loaded packages
+            const filteredPackages = allLoadedPackages.filter(pkg =>
                 pkg.name.toLowerCase().includes(searchTerm)
             )
 
-            renderPackages(filteredPackages)
+            renderPackages(filteredPackages) // Render only filtered results
         }
 
-        searchInput.addEventListener('input', filterPackages)
+        searchInput.addEventListener('input', filterAndRenderPackages)
 
-        async function fetchData() {
+        // Function to fetch and process a single chunk
+        async function fetchChunk(chunkFilename) {
+            if (!chunkFilename) return [] // Should not happen if index is correct
+
             try {
-                const response = await fetch('detections.npm.json')
+                const response = await fetch(dataBasePath + chunkFilename)
                 if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`)
+                    throw new Error(`HTTP error! status: ${response.status} for ${chunkFilename}`)
                 }
-                allPackages = await response.json()
-                renderPackages(allPackages) // Initial render
+                const chunkData = await response.json()
+                // Ensure it's always an array
+                return Array.isArray(chunkData) ? chunkData : []
             } catch (error) {
-                console.error('Error fetching or processing detections data:', error)
-                resultsContainer.innerHTML = '<p class="no-results">Error loading data. Please check the console and ensure detections.json exists and is valid.</p>'
+                console.error(`Error fetching or processing chunk ${chunkFilename}:`, error)
+                // Maybe display an error message to the user?
+                loadingIndicator.textContent = `Error loading ${chunkFilename}.`
+                loadingIndicator.style.display = 'block' // Show error
+                return [] // Return empty array on error
             }
         }
 
-        fetchData()
+        // Function to load the next chunk of data
+        async function loadNextChunk() {
+            // Check isLoading, allChunksLoaded (for scrolling), and if index is valid
+            if (isLoading || allChunksLoaded || currentChunkIndex >= chunkFiles.length) {
+                return // Don't load if already loading, all loaded, or no more chunks
+            }
+
+            isLoading = true
+            loadingIndicator.style.display = 'block'
+            loadingIndicator.textContent = 'Loading more packages...' // Reset text
+
+            const nextChunkFile = chunkFiles[currentChunkIndex]
+
+            // Avoid loading if search just loaded it
+            let newPackages = []
+            if (loadedChunkFiles.has(nextChunkFile)) {
+                console.log(`Chunk ${nextChunkFile} already loaded, skipping fetch in loadNextChunk.`)
+            } else {
+                 newPackages = await fetchChunk(nextChunkFile)
+                 if (newPackages.length > 0) {
+                     // Avoid duplicates
+                     const currentPackageNames = new Set(allLoadedPackages.map(p => p.name))
+                     const uniqueNewPackages = newPackages.filter(p => !currentPackageNames.has(p.name))
+                     allLoadedPackages.push(...uniqueNewPackages)
+                     allLoadedPackages.sort((a, b) => a.name.localeCompare(b.name)) // Keep sorted
+                 }
+                  loadedChunkFiles.add(nextChunkFile) // Mark as loaded
+            }
+
+            updateLoadedChunksDisplay() // Update the display
+
+            if (searchInput.value.trim() === '') {
+                 // No active search: re-render all loaded packages.
+                 // renderPackages will handle the display even if allLoadedPackages is empty.
+                 renderPackages(allLoadedPackages)
+             } else {
+                  // Search is active: filter and render based on the (potentially) updated allLoadedPackages.
+                  filterAndRenderPackages()
+             }
+
+            currentChunkIndex++
+            if (currentChunkIndex >= chunkFiles.length) {
+                allChunksLoaded = true
+                loadingIndicator.textContent = 'All packages loaded.'
+                // Optionally hide indicator after a delay: setTimeout(() => loadingIndicator.style.display = 'none', 2000)
+            } else {
+                 loadingIndicator.style.display = 'none'
+            }
+
+
+            isLoading = false
+        }
+
+        // Initial data load
+        async function initialize() {
+            try {
+                // Fetch the index file
+                const response = await fetch(dataBasePath + 'index.json')
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status} fetching index.json`)
+                }
+                chunkFiles = await response.json()
+
+                if (!Array.isArray(chunkFiles) || chunkFiles.length === 0) {
+                     resultsContainer.innerHTML = '<p class="no-results">No data chunks found. Run the generation script.</p>'
+                     loadingIndicator.style.display = 'none'
+                    return
+                }
+
+                // Load the first chunk immediately
+                await loadNextChunk()
+                 // If the first chunk was empty, try loading the next one automatically
+                 if(allLoadedPackages.length === 0 && !allChunksLoaded) {
+                    await loadNextChunk()
+                 }
+
+                 // Check final state after initial load attempts
+                 if(allLoadedPackages.length === 0 && allChunksLoaded) {
+                      resultsContainer.innerHTML = '<p class="no-results">No packages with detections found in any data file.</p>'
+                      loadingIndicator.style.display = 'none' // Ensure loading indicator is hidden
+                 }
+                 // The previous 'else if' block for (allLoadedPackages.length > 0 && resultsContainer.innerHTML.includes('Loading data...'))
+                 // has been removed as its functionality is now covered by renderPackages calls within loadNextChunk.
+
+                 updateLoadedChunksDisplay() // Update display after initial load(s)
+
+
+            } catch (error) {
+                console.error('Error initializing page:', error)
+                resultsContainer.innerHTML = '<p class="no-results">Error loading initial data index. Please check console.</p>'
+                loadingIndicator.style.display = 'none'
+            }
+        }
+
+        // Infinite scroll listener
+        window.addEventListener('scroll', () => {
+            // Only trigger scroll load if search is not active OR if search is active but user scrolled to bottom anyway
+            const isSearchActive = searchInput.value.trim() !== ''
+            const scrollThreshold = document.documentElement.scrollHeight - 300 // px from bottom
+
+            if (!isLoading && !allChunksLoaded && (window.innerHeight + window.scrollY) >= scrollThreshold) {
+                loadNextChunk()
+            }
+        })
+
+        // Start the process
+        initialize()
     </script>
 </body>
 </html>
