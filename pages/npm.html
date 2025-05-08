@@ -262,8 +262,12 @@
     async function filterAndRenderPackages() {
       if (isLoading) return
       const searchTerm = searchInput.value.toLowerCase().trim()
-      if (!searchTerm) return renderPackages(allLoadedPackages)
+      if (!searchTerm) {
+        renderPackages(allLoadedPackages)
+        return
+      }
       const targetChunkFile = getChunkFilenameForTerm(searchTerm)
+      let newChunkLoaded = false
 
       if (targetChunkFile && chunkFiles.includes(targetChunkFile) && !loadedChunkFiles.has(targetChunkFile)) {
         isLoading = true
@@ -282,14 +286,37 @@
 
         loadedChunkFiles.add(targetChunkFile)
         updateLoadedChunksDisplay()
-        updateAvailableChunksDisplay()
 
         loadingIndicator.style.display = 'none'
         isLoading = false
+        newChunkLoaded = true
       }
 
       const filteredPackages = allLoadedPackages.filter(pkg => pkg.name.toLowerCase().includes(searchTerm))
       renderPackages(filteredPackages)
+
+      if (newChunkLoaded && filteredPackages.length > 0) {
+        const firstChar = searchTerm.toLowerCase()[0]
+        const digits = '0123456789'
+        const alphabet = 'abcdefghijklmnopqrstuvwxyz'
+        let groupKeyToScrollTo = ''
+
+        if (alphabet.includes(firstChar)) {
+          groupKeyToScrollTo = firstChar.toUpperCase()
+        } else if (digits.includes(firstChar)) {
+          groupKeyToScrollTo = firstChar
+        } else {
+          groupKeyToScrollTo = 'Other'
+        }
+
+        const headings = resultsContainer.querySelectorAll('.group-heading')
+        for (const heading of headings) {
+          if (heading.textContent === groupKeyToScrollTo) {
+            heading.scrollIntoView({ behavior: 'smooth', block: 'start' })
+            break
+          }
+        }
+      }
     }
 
     searchInput.addEventListener('input', filterAndRenderPackages)
