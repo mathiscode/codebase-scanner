@@ -75,25 +75,25 @@ try {
 }
 
 function logScanResultToDb(result) {
-    const params = {
-        name: result.name,
-        scanned_at: result.scanned_at || Math.floor(Date.now() / 1000),
-        status: result.status,
-        findings_json: result.findings_json || null,
-        error_message: result.error_message || null,
-        files_scanned: result.files_scanned != null ? result.files_scanned : null,
-        detections_count: result.detections_count != null ? result.detections_count : null
-    }
+  const params = {
+    name: result.name,
+    scanned_at: result.scanned_at || Math.floor(Date.now() / 1000),
+    status: result.status,
+    findings_json: result.findings_json || null,
+    error_message: result.error_message || null,
+    files_scanned: result.files_scanned != null ? result.files_scanned : null,
+    detections_count: result.detections_count != null ? result.detections_count : null
+  }
 
-    try {
-        const updateResult = updateStmt.run(params)
-        if (updateResult.changes === 0) {
-            insertStmt.run(params)
-        }
-    } catch (dbError) {
-        console.error(`Error logging result for package ${result.name} to database:`, dbError)
-        appendToErrorLog(`DB Insert/Update Error for ${result.name}: ${dbError.message}`)
+  try {
+    const updateResult = updateStmt.run(params)
+    if (updateResult.changes === 0) {
+      insertStmt.run(params)
     }
+  } catch (dbError) {
+    console.error(`Error logging result for package ${result.name} to database:`, dbError)
+    appendToErrorLog(`DB Insert/Update Error for ${result.name}: ${dbError.message}`)
+  }
 }
 
 async function getLastScannedPackage() {
@@ -101,11 +101,11 @@ async function getLastScannedPackage() {
     const query = db.prepare('SELECT name FROM scan_results ORDER BY scanned_at DESC LIMIT 1')
     const result = query.get()
     if (result) {
-        console.log(`Found last scanned package in database: ${result.name}`)
-        return result.name
+      console.log(`Found last scanned package in database: ${result.name}`)
+      return result.name
     } else {
-        console.log('No previous scan results found in the database.')
-        return null
+      console.log('No previous scan results found in the database.')
+      return null
     }
   } catch (error) {
     console.error('Error querying database for last scanned package:', error)
@@ -168,7 +168,7 @@ async function main() {
       }
 
       if (filesScanned > 0) {
-          findingsJson = JSON.stringify(flatResults)
+        findingsJson = JSON.stringify(flatResults)
       }
 
       if (detections.length > 0) {
@@ -182,12 +182,12 @@ async function main() {
       }
 
       logScanResultToDb({
-          name: packageName,
-          status: 'scanned',
-          findings_json: findingsJson,
-          error_message: null,
-          files_scanned: filesScanned,
-          detections_count: detections.length
+        name: packageName,
+        status: 'scanned',
+        findings_json: findingsJson,
+        error_message: null,
+        files_scanned: filesScanned,
+        detections_count: detections.length
       })
 
     } catch (error) {
@@ -195,12 +195,12 @@ async function main() {
       console.error(`[${i + 1}/${totalPackages}] ❌ Error scanning package ${packageName}:`, error.message)
       await appendToErrorLog(`Scan Error for ${packageName}: ${error.message}`)
       logScanResultToDb({
-          name: packageName,
-          status: 'error',
-          findings_json: null,
-          error_message: error.message || 'Unknown error during scanNpmPackage call',
-          files_scanned: null,
-          detections_count: null
+        name: packageName,
+        status: 'error',
+        findings_json: null,
+        error_message: error.message || 'Unknown error during scanNpmPackage call',
+        files_scanned: null,
+        detections_count: null
       })
     }
   }
@@ -210,31 +210,31 @@ async function main() {
     db.close()
     console.log('Database connection closed.')
   } catch(closeError) {
-     console.error('Error closing database:', closeError)
-     await appendToErrorLog(`DB Close Error: ${closeError.message}`)
+    console.error('Error closing database:', closeError)
+    await appendToErrorLog(`DB Close Error: ${closeError.message}`)
   }
 }
 
 main().catch(async error => {
   console.error('Unhandled error during scan initiation or loop:', error)
   await appendToErrorLog(`FATAL UNHANDLED ERROR: ${error.message}${EOL}${error.stack}`)
-   if (db && db.isOpen) {
-       try { db.close() } catch(e) { /* ignore closing error if already failed */ }
-   }
+  if (db && db.isOpen) {
+    try { db.close() } catch(e) { /* ignore closing error if already failed */ }
+  }
   process.exit(1)
 })
 
 process.on('SIGINT', async () => {
-    console.log('SIGINT received, closing database connection...')
-    if (db && db.isOpen) {
-        try { db.close() } catch(e) { console.error('Error closing DB on SIGINT:', e)}
-    }
-    process.exit(0)
+  console.log('SIGINT received, closing database connection...')
+  if (db && db.isOpen) {
+    try { db.close() } catch(e) { console.error('Error closing DB on SIGINT:', e)}
+  }
+  process.exit(0)
 })
 process.on('SIGTERM', async () => {
-    console.log('SIGTERM received, closing database connection...')
-     if (db && db.isOpen) {
-        try { db.close() } catch(e) { console.error('Error closing DB on SIGTERM:', e)}
-    }
-    process.exit(0)
+  console.log('SIGTERM received, closing database connection...')
+  if (db && db.isOpen) {
+    try { db.close() } catch(e) { console.error('Error closing DB on SIGTERM:', e)}
+  }
+  process.exit(0)
 })
