@@ -85,14 +85,19 @@ export async function iterateFiles(folder, options) {
     const filePath = path.join(folder, file)
     if (path.basename(filePath) === 'node_modules') {
       if (!jsonOutput) console.log(chalk.gray(`Skipping node_modules directory: ${filePath}`))
-      continue;
+      continue
     }
 
     let stat
     try {
-      stat = fs.statSync(filePath)
+      stat = fs.lstatSync(filePath)
     } catch (err) {
       console.error(chalk.yellow(`Warning: Could not stat file ${filePath}: ${err.message}`))
+      continue
+    }
+
+    if (stat.isSymbolicLink()) {
+      if (!jsonOutput) console.log(chalk.gray(`Skipping symbolic link: ${filePath}`))
       continue
     }
 
