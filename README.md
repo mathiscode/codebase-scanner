@@ -6,7 +6,7 @@ Scan a folder, repository, npm/pypi package, or dependencies for malicious signa
 
 ---
 
-[![NPM Malware Results](https://img.shields.io/badge/NPM%20Registry-Malware%20Results-success)](https://mathiscode.github.io/codebase-scanner/pages/npm.html)
+[![NPM Malware Results](https://img.shields.io/badge/NPM%20Registry-Malware%20Results-blue)](https://mathiscode.github.io/codebase-scanner/pages/npm.html)
 
 [![Sponsors](https://img.shields.io/github/sponsors/mathiscode?color=red&label=sponsors)](https://github.com/sponsors/mathiscode)
 [![Version](https://img.shields.io/github/package-json/v/mathiscode/codebase-scanner?color=success)](https://www.npmjs.com/package/@mathiscode/codebase-scanner)
