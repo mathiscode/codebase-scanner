@@ -35,6 +35,7 @@
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
     "deploy:npm": "npm publish",
     "deploy:docker": "docker build -t mathiscode/codebase-scanner:latest . && docker push mathiscode/codebase-scanner:latest",
+    "deploy:docker:scan-npm": "npm run build:scan:npm:docker && docker push mathiscode/codebase-scanner-scan-npm-registry:latest",
     "scan:npm": "node utils/scan-npm-registry.mjs",
     "scan:npm:docker": "docker run --rm -v \"$(pwd)/codebase-scanner-npm-registry-results:/tmp/codebase-scanner-npm-registry-results\" mathiscode/codebase-scanner-scan-npm-registry",
     "build:scan:npm:docker": "docker build -t mathiscode/codebase-scanner-scan-npm-registry -f Dockerfile.scan-npm-registry .",
