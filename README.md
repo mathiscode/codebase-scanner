@@ -95,9 +95,7 @@ codebase-scanner --help
 
 ---
 
-The tool will exit with a non-zero exit code if malicious code is found. This can be used to fail CI pipelines.
-
-Exit Codes:
+## Exit Codes
 
 - `0`: No malicious code found
 - `1`: Malicious code found
