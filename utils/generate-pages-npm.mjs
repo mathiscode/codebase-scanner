@@ -8,8 +8,12 @@ import path from 'node:path'
 import os from 'node:os'
 import { DatabaseSync } from 'node:sqlite'
 import allPackageNames from 'all-the-package-names' with { type: 'json' }
+import zlib from 'node:zlib'
+import { promisify } from 'node:util'
 
 import Signatures from '../signatures/index.mjs'
+
+const gzip = promisify(zlib.gzip)
 
 // --- Configuration ---
 let logDir = path.resolve(process.cwd(), 'codebase-scanner-npm-registry-results')
@@ -104,10 +108,10 @@ async function generateDetectionChunks() {
   try {
     for (const key in packagesByFirstLetter) {
       if (packagesByFirstLetter[key].length > 0) {
-        const fileName = `${key}.json`
+        const fileName = `${key}.json.gz`
         const filePath = path.join(chunkOutputDir, fileName)
         try {
-          const data = packagesByFirstLetter[key].map(pkg => ({
+          const dataToProcess = packagesByFirstLetter[key].map(pkg => ({
             name: pkg.name,
             detections_count: pkg.detections_count,
             scanned_at: pkg.scanned_at,
@@ -118,7 +122,10 @@ async function generateDetectionChunks() {
               .map(f => ({ index: f.index, file: f.file.replace(/\/tmp\/codebase-scanner-[^\/]+\/package\//g, '') }))
           }))
 
-          await fs.promises.writeFile(filePath, JSON.stringify(data, null, 2), 'utf-8')
+          const jsonData = JSON.stringify(dataToProcess, null, 2)
+          const gzippedData = await gzip(Buffer.from(jsonData))
+
+          await fs.promises.writeFile(filePath, gzippedData)
           console.log(`Wrote ${packagesByFirstLetter[key].length} packages to ${fileName}`)
           generatedFiles.push(fileName)
         } catch (writeError) {

@@ -202,10 +202,13 @@
       const firstChar = term.toLowerCase()[0]
       const digits = '0123456789'
       const alphabet = 'abcdefghijklmnopqrstuvwxyz'
+      let baseFilename = ''
 
-      if (alphabet.includes(firstChar)) return `${firstChar}.json`
-      else if (digits.includes(firstChar)) return `${firstChar}.json`
-      else return 'other.json'
+      if (alphabet.includes(firstChar)) baseFilename = `${firstChar}.json`
+      else if (digits.includes(firstChar)) baseFilename = `${firstChar}.json`
+      else baseFilename = 'other.json'
+      
+      return `${baseFilename}.gz` // Ensure .gz is appended
     }
 
     function renderPackages(packagesToRender) {
@@ -326,13 +329,32 @@
 
       try {
         const response = await fetch(dataBasePath + chunkFilename)
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status} for ${chunkFilename}`)
-        const chunkData = await response.json()
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status} for ${chunkFilename}`)
+        }
+
+        if (typeof DecompressionStream === 'undefined') {
+          console.warn('DecompressionStream API not supported in this browser. Cannot process gzipped files.')
+          throw new Error(`DecompressionStream not supported. Failed to load ${chunkFilename}.`)
+        }
+
+        if (!response.body) {
+            throw new Error(`Response body is null for ${chunkFilename}.`)
+        }
+
+        const decompressionStream = new DecompressionStream('gzip')
+        const decompressedStream = response.body.pipeThrough(decompressionStream)
+        
+        const decompressedText = await new Response(decompressedStream).text()
+        const chunkData = JSON.parse(decompressedText)
+
         return Array.isArray(chunkData) ? chunkData : []
       } catch (error) {
-        console.error(`Error fetching or processing chunk ${chunkFilename}:`, error)
-        loadingIndicator.textContent = `Error loading ${chunkFilename}.`
-        loadingIndicator.style.display = 'block'
+        console.error(`Error in fetchChunk for ${chunkFilename}:`, error)
+        if (loadingIndicator) { 
+            loadingIndicator.textContent = `Error loading ${chunkFilename}. Check console.`
+            loadingIndicator.style.display = 'block'
+        }
         return []
       }
     }
