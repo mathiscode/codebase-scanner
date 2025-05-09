@@ -35,7 +35,12 @@
     <h1>NPM Registry Malware Scan Results</h1>
     <h2>Scanned with <a href='https://github.com/mathiscode/codebase-scanner' target='_blank'>codebase-scanner</a> by <a href='https://github.com/mathiscode' target='_blank'>Jay Mathis</a></h2>
 
-    <p id='package-count' style='font-size: 1.2em; text-align: center; margin-bottom: 20px; border: 1px solid #ccc; padding: 10px; border-radius: 5px; background-color: #f9f9f9;'></p>
+    <p id='package-count' style='font-size: 1.2em; text-align: center; border: 1px solid #ccc; padding: 10px; border-radius: 5px; background-color: #f9f9f9;'></p>
+
+    <div style='display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 0.8em; color: #777;'>
+      <progress id='scan-progress' value='0' max='100'></progress>
+      <span id='scan-progress-text' />
+    </div>
 
     <hr />
     <p>Please note that many legitimate packages may use techniques that trigger false positives.</p>
@@ -208,7 +213,7 @@
       else if (digits.includes(firstChar)) baseFilename = `${firstChar}.json`
       else baseFilename = 'other.json'
       
-      return `${baseFilename}.gz` // Ensure .gz is appended
+      return `${baseFilename}.gz`
     }
 
     function renderPackages(packagesToRender) {
@@ -265,10 +270,8 @@
     async function filterAndRenderPackages() {
       if (isLoading) return
       const searchTerm = searchInput.value.toLowerCase().trim()
-      if (!searchTerm) {
-        renderPackages(allLoadedPackages)
-        return
-      }
+      if (!searchTerm) return renderPackages(allLoadedPackages)
+
       const targetChunkFile = getChunkFilenameForTerm(searchTerm)
       let newChunkLoaded = false
 
@@ -329,22 +332,17 @@
 
       try {
         const response = await fetch(dataBasePath + chunkFilename)
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status} for ${chunkFilename}`)
-        }
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status} for ${chunkFilename}`)
 
         if (typeof DecompressionStream === 'undefined') {
           console.warn('DecompressionStream API not supported in this browser. Cannot process gzipped files.')
           throw new Error(`DecompressionStream not supported. Failed to load ${chunkFilename}.`)
         }
 
-        if (!response.body) {
-            throw new Error(`Response body is null for ${chunkFilename}.`)
-        }
+        if (!response.body) throw new Error(`Response body is null for ${chunkFilename}.`)
 
         const decompressionStream = new DecompressionStream('gzip')
         const decompressedStream = response.body.pipeThrough(decompressionStream)
-        
         const decompressedText = await new Response(decompressedStream).text()
         const chunkData = JSON.parse(decompressedText)
 
@@ -421,6 +419,12 @@
         const signaturesResponse = await fetch(dataBasePath + 'signatures.json')
         if (!signaturesResponse.ok) throw new Error(`HTTP error! status: ${signaturesResponse.status} fetching signatures.json`)
         signatures = await signaturesResponse.json()
+
+        const progress = document.getElementById('scan-progress')
+        progress.value = total
+        progress.max = npmPackageCount
+        const percentage = ((total / npmPackageCount) * 100).toFixed(2)
+        document.getElementById('scan-progress-text').textContent = `${percentage}% (${new Intl.NumberFormat().format(total)} / ${new Intl.NumberFormat().format(npmPackageCount)})`
 
         await loadNextChunk()
         if(allLoadedPackages.length === 0 && !allChunksLoaded) await loadNextChunk()
