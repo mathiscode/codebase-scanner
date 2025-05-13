@@ -321,7 +321,7 @@
       const filteredPackages = allLoadedPackages.filter(pkg => pkg.name.toLowerCase().includes(searchTerm))
       renderPackages(filteredPackages)
 
-      if (newChunkLoaded && filteredPackages.length > 0) {
+      if (newChunkLoaded && filteredPackages.length > 0 && document.activeElement !== searchInput) {
         const firstChar = searchTerm.toLowerCase()[0]
         const digits = '0123456789'
         const alphabet = 'abcdefghijklmnopqrstuvwxyz'
