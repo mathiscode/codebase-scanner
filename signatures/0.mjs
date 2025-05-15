@@ -142,5 +142,5 @@ export default [
     signature: '\\s{80,}',
     extensions: ['js', 'mjs', 'cjs', 'ts', 'mts', 'cts', 'jsx', 'tsx'],
     level: 'warning'
-  }
+  },
 ]
