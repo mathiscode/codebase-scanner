@@ -350,5 +350,23 @@
       "py"
     ],
     "level": "warning"
+  },
+  {
+    "name": "Unicode Private Use Area Characters",
+    "regex": true,
+    "signature": "[\\uE000-\\uF8FF\\U000F0000-\\U000FFFFD\\U00100000-\\U0010FFFD]",
+    "extensions": [
+      "js",
+      "mjs",
+      "cjs",
+      "ts",
+      "mts",
+      "cts",
+      "jsx",
+      "tsx",
+      "json",
+      "py"
+    ],
+    "level": "malicious"
   }
 ]
