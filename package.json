@@ -2,6 +2,7 @@
   "name": "@mathiscode/codebase-scanner",
   "version": "2.0.11",
   "description": "Scan a codebase for malware signatures",
+  "license": "MIT",
   "author": {
     "name": "Jay Mathis",
     "email": "code@mathis.network",
@@ -15,7 +16,11 @@
   "bugs": {
     "url": "https://github.com/mathiscode/codebase-scanner/issues"
   },
-  "license": "MIT",
+  "main": "index.mjs",
+  "type": "module",
+  "bin": {
+    "codebase-scanner": "./index.mjs"
+  },
   "keywords": [
     "malware",
     "obfuscated",
@@ -23,13 +28,15 @@
     "repository",
     "scanner",
     "virus",
-    "scan"
+    "scan",
+    "spyware",
+    "malicious",
+    "scam",
+    "breach",
+    "theft",
+    "hacking",
+    "phishing"
   ],
-  "main": "index.mjs",
-  "type": "module",
-  "bin": {
-    "codebase-scanner": "./index.mjs"
-  },
   "scripts": {
     "start": "node index.mjs",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",

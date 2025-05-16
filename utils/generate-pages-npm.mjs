@@ -4,23 +4,21 @@
  */
 
 import fs from 'node:fs'
-import path from 'node:path'
 import os from 'node:os'
+import path from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
-import allPackageNames from 'all-the-package-names' with { type: 'json' }
-import zlib from 'node:zlib'
 import { promisify } from 'node:util'
+import zlib from 'node:zlib'
 
+import allPackageNames from 'all-the-package-names' with { type: 'json' }
 import Signatures from '../signatures/index.mjs'
 
 const gzip = promisify(zlib.gzip)
 
-// --- Configuration ---
-let logDir = path.resolve(process.cwd(), 'codebase-scanner-npm-registry-results')
-if (!fs.existsSync(logDir)) logDir = path.resolve(os.tmpdir(), 'codebase-scanner-npm-registry-results')
-const dbPath = path.join(logDir, 'codebase-scanner-npm-registry.sqlite')
+let dbDir = path.resolve(process.cwd(), 'codebase-scanner-npm-registry-results')
+if (!fs.existsSync(dbDir)) dbDir = path.resolve(os.tmpdir(), 'codebase-scanner-npm-registry-results')
+const dbPath = path.join(dbDir, 'codebase-scanner-npm-registry.sqlite')
 const chunkOutputDir = path.resolve(process.cwd(), 'pages/data/npm')
-// --- End Configuration ---
 
 async function generateDetectionChunks() {
   console.log(`Reading scan results from database: ${dbPath}`)
@@ -135,20 +133,20 @@ async function generateDetectionChunks() {
     }
 
     generatedFiles.sort((a, b) => { 
-        const nameA = a.split('.')[0]
-        const nameB = b.split('.')[0]
+      const nameA = a.split('.')[0]
+      const nameB = b.split('.')[0]
 
-        if (nameA === 'other') return 1
-        if (nameB === 'other') return -1
+      if (nameA === 'other') return 1
+      if (nameB === 'other') return -1
 
-        const isADigit = digits.includes(nameA)
-        const isBDigit = digits.includes(nameB)
+      const isADigit = digits.includes(nameA)
+      const isBDigit = digits.includes(nameB)
 
-        if (isADigit && isBDigit) return parseInt(nameA, 10) - parseInt(nameB, 10)
-        if (isADigit) return -1
-        if (isBDigit) return 1
+      if (isADigit && isBDigit) return parseInt(nameA, 10) - parseInt(nameB, 10)
+      if (isADigit) return -1
+      if (isBDigit) return 1
 
-        return nameA.localeCompare(nameB)
+      return nameA.localeCompare(nameB)
     })
 
     const indexFilePath = path.join(chunkOutputDir, 'index.json')
@@ -157,7 +155,6 @@ async function generateDetectionChunks() {
     await fs.promises.writeFile(path.join(chunkOutputDir, 'count.json'), JSON.stringify({ count: allDetections.length, total: totalPackages, npmPackageCount: allPackageNames.length }, null, 2), 'utf-8')
     console.log(`Wrote index file to ${indexFilePath}`) 
     console.log('JSON chunk generation complete.')
-
   } catch (writeError) {
     console.error(`Error during file writing process:`, writeError)
     process.exit(1)

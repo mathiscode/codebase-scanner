@@ -1,21 +1,7 @@
-# Use a lightweight Node.js image
-FROM node:22-alpine AS base
-
-# Install pnpm
+FROM node:22-alpine
 RUN npm install -g pnpm
-
-# Set the working directory
 WORKDIR /app
-
-# Copy package manifest and lock file
 COPY package.json pnpm-lock.yaml ./
-
-# Install production dependencies
 RUN pnpm install --frozen-lockfile --prod
-
-# Copy the application code required for the script
-# Copy the main script and the imported module
 COPY . /app
-
-# Command to run the script
 CMD ["node", "utils/scan-npm-registry.mjs"]

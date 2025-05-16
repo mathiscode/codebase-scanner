@@ -87,9 +87,7 @@ function logScanResultToDb(result) {
 
   try {
     const updateResult = updateStmt.run(params)
-    if (updateResult.changes === 0) {
-      insertStmt.run(params)
-    }
+    if (updateResult.changes === 0) insertStmt.run(params)
   } catch (dbError) {
     console.error(`Error logging result for package ${result.name} to database:`, dbError)
     appendToErrorLog(`DB Insert/Update Error for ${result.name}: ${dbError.message}`)
@@ -159,17 +157,11 @@ async function main() {
     try {
       scanResultsArray = await scanNpmPackage(packageName, scanOptions)
       const flatResults = deepFlatten(Array.isArray(scanResultsArray) ? scanResultsArray : []).filter(r => r && typeof r === 'object')
-
       filesScanned = flatResults.length
       detections = flatResults.filter(r => r.triggered)
 
-      for (const det of detections) {
-        detectionCounts[det.name] = (detectionCounts[det.name] || 0) + 1
-      }
-
-      if (filesScanned > 0) {
-        findingsJson = JSON.stringify(flatResults)
-      }
+      for (const det of detections) detectionCounts[det.name] = (detectionCounts[det.name] || 0) + 1
+      if (filesScanned > 0) findingsJson = JSON.stringify(flatResults)
 
       if (detections.length > 0) {
         const summary = Object.entries(detectionCounts).map(([type, count]) => `${type}: ${count}`).join(', ')
@@ -231,6 +223,7 @@ process.on('SIGINT', async () => {
   }
   process.exit(0)
 })
+
 process.on('SIGTERM', async () => {
   console.log('SIGTERM received, closing database connection...')
   if (db && db.isOpen) {
