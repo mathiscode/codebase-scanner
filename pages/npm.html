@@ -99,12 +99,11 @@
     const todayDateSpan = document.querySelectorAll('.today-date')
     const dataBasePath = 'data/npm/'
 
-    // Add cache busting function
+    for (const span of todayDateSpan) span.textContent = new Date().toLocaleDateString()
+
     function getCacheBustedUrl(path) {
       return `${path}?t=${Date.now()}`
     }
-
-    for (const span of todayDateSpan) span.textContent = new Date().toLocaleDateString()
 
     function updateLoadedChunksDisplay() {
       const loadedFilesArray = Array.from(loadedChunkFiles).sort()
@@ -356,7 +355,9 @@
       if (!chunkFilename) return []
 
       try {
-        const response = await fetch(getCacheBustedUrl(dataBasePath + chunkFilename))
+        const isLastChunk = chunkFilename === chunkFiles[chunkFiles.length - 1]
+        const url = isLastChunk ? getCacheBustedUrl(dataBasePath + chunkFilename) : dataBasePath + chunkFilename
+        const response = await fetch(url)
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status} for ${chunkFilename}`)
 
         if (typeof DecompressionStream === 'undefined') {
