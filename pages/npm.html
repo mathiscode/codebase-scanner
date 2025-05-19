@@ -154,28 +154,48 @@
       if (isMalicious) card.classList.add('malicious-card')
       else if (hasOnlyWarnings) card.classList.add('warning-card')
 
-      card.innerHTML = `
-        <div class='card-content'>
-            <h2><a href='https://www.npmjs.com/package/${pkg.name}' target='_blank' rel='noopener noreferrer'>${pkg.name}</a></h2>
-            <p>Detections: <strong>${pkg.detections_count}</strong></p>
-            <div class='details'>
-                <span>Files Scanned: ${pkg.files_scanned ?? 'N/A'}</span><br>
-                <span>Scanned At: ${scannedDate}</span>
-            </div>
-        </div>
-        <div class='findings-control'>
-            ${findingsExist ? '<span class="findings-toggle">Show Findings</span>' : '<span class="no-findings-info">No specific findings data available.</span>'}
-            ${findingsExist ? '<div class="findings-details" style="display: none;"></div>' : ''}
-        </div>
-      `
+      // Card Content
+      const cardContent = document.createElement('div')
+      cardContent.className = 'card-content'
+
+      const pkgNameLink = document.createElement('a')
+      pkgNameLink.href = `https://www.npmjs.com/package/${pkg.name}`
+      pkgNameLink.target = '_blank'
+      pkgNameLink.rel = 'noopener noreferrer'
+      pkgNameLink.textContent = pkg.name
+      const pkgNameHeader = document.createElement('h2')
+      pkgNameHeader.appendChild(pkgNameLink)
+      cardContent.appendChild(pkgNameHeader)
+
+      const detectionsPara = document.createElement('p')
+      detectionsPara.innerHTML = `Detections: <strong>${pkg.detections_count}</strong>`
+      cardContent.appendChild(detectionsPara)
+
+      const detailsDiv = document.createElement('div')
+      detailsDiv.className = 'details'
+      detailsDiv.innerHTML = `<span>Files Scanned: ${pkg.files_scanned ?? 'N/A'}</span><br><span>Scanned At: ${scannedDate}</span>`
+      cardContent.appendChild(detailsDiv)
+
+      card.appendChild(cardContent)
+
+      // Findings Control
+      const findingsControl = document.createElement('div')
+      findingsControl.className = 'findings-control'
 
       if (findingsExist) {
-        const toggle = card.querySelector('.findings-toggle')
-        const detailsDiv = card.querySelector('.findings-details')
+        const findingsToggle = document.createElement('span')
+        findingsToggle.className = 'findings-toggle'
+        findingsToggle.textContent = 'Show Findings'
+        findingsControl.appendChild(findingsToggle)
 
-        toggle.onclick = () => {
-          const currentlyVisible = detailsDiv.style.display !== 'none'
-          if (!currentlyVisible && detailsDiv.innerHTML === '') {
+        const findingsDetailsDiv = document.createElement('div')
+        findingsDetailsDiv.className = 'findings-details'
+        findingsDetailsDiv.style.display = 'none'
+        findingsControl.appendChild(findingsDetailsDiv)
+
+        findingsToggle.onclick = () => {
+          const currentlyVisible = findingsDetailsDiv.style.display !== 'none'
+          if (!currentlyVisible && findingsDetailsDiv.innerHTML === '') {
             try {
               if (findingsArray.length > 0) {
                 const table = document.createElement('table')
@@ -208,21 +228,26 @@
                 })
                 table.appendChild(thead)
                 table.appendChild(tbody)
-                detailsDiv.appendChild(table)
+                findingsDetailsDiv.appendChild(table)
               } else {
-                detailsDiv.innerHTML = '<p>No triggered detections found in scan data.</p>'
+                findingsDetailsDiv.innerHTML = '<p>No triggered detections found in scan data.</p>'
               }
             } catch (e) {
               console.error('Error processing findings for package:', pkg.name, e)
-              detailsDiv.innerHTML = '<p style="color: red;">Could not display findings (error during processing).</p>'
+              findingsDetailsDiv.innerHTML = '<p style="color: red;">Could not display findings (error during processing).</p>'
             }
           }
 
-          detailsDiv.style.display = currentlyVisible ? 'none' : 'block'
-          toggle.textContent = currentlyVisible ? 'Show Findings' : 'Hide Findings'
+          findingsDetailsDiv.style.display = currentlyVisible ? 'none' : 'block'
+          findingsToggle.textContent = currentlyVisible ? 'Show Findings' : 'Hide Findings'
         }
+      } else {
+        const noFindingsInfo = document.createElement('span')
+        noFindingsInfo.className = 'no-findings-info'
+        noFindingsInfo.textContent = 'No specific findings data available.'
+        findingsControl.appendChild(noFindingsInfo)
       }
-
+      card.appendChild(findingsControl)
       return card
     }
 
@@ -241,6 +266,7 @@
     }
 
     function renderPackages(packagesToRender) {
+      console.time('renderPackages:' + packagesToRender.length)
       resultsContainer.innerHTML = ''
       const searchTermActive = searchInput.value.trim() !== ''
 
@@ -288,6 +314,7 @@
           resultsContainer.appendChild(card)
         })
       })
+      console.timeEnd('renderPackages:' + packagesToRender.length)
     }
 
 
