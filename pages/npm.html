@@ -99,6 +99,11 @@
     const todayDateSpan = document.querySelectorAll('.today-date')
     const dataBasePath = 'data/npm/'
 
+    // Add cache busting function
+    function getCacheBustedUrl(path) {
+      return `${path}?t=${Date.now()}`
+    }
+
     for (const span of todayDateSpan) span.textContent = new Date().toLocaleDateString()
 
     function updateLoadedChunksDisplay() {
@@ -351,7 +356,7 @@
       if (!chunkFilename) return []
 
       try {
-        const response = await fetch(dataBasePath + chunkFilename)
+        const response = await fetch(getCacheBustedUrl(dataBasePath + chunkFilename))
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status} for ${chunkFilename}`)
 
         if (typeof DecompressionStream === 'undefined') {
@@ -417,7 +422,7 @@
 
     async function initialize() {
       try {
-        const response = await fetch(dataBasePath + 'index.json')
+        const response = await fetch(getCacheBustedUrl(dataBasePath + 'index.json'))
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status} fetching index.json`)
         chunkFiles = await response.json()
 
@@ -427,7 +432,7 @@
           return
         }
 
-        const countResponse = await fetch(dataBasePath + 'count.json')
+        const countResponse = await fetch(getCacheBustedUrl(dataBasePath + 'count.json'))
         if (!countResponse.ok) throw new Error(`HTTP error! status: ${countResponse.status} fetching count.json`)
         const { count, total, npmPackageCount } = await countResponse.json()
         document.getElementById('package-count').innerHTML = `
@@ -436,7 +441,7 @@
               ~<strong>${new Intl.NumberFormat().format(npmPackageCount)}</strong> packages in the <a href='https://npmjs.com' target='_blank' rel='noopener noreferrer'>NPM registry</a>.
             `
 
-        const signaturesResponse = await fetch(dataBasePath + 'signatures.json')
+        const signaturesResponse = await fetch(getCacheBustedUrl(dataBasePath + 'signatures.json'))
         if (!signaturesResponse.ok) throw new Error(`HTTP error! status: ${signaturesResponse.status} fetching signatures.json`)
         signatures = await signaturesResponse.json()
 
