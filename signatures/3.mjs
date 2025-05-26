@@ -13,6 +13,14 @@ export default [
     regex: true,
     signature: '[\\uE000-\\uF8FF\\U000F0000-\\U000FFFFD\\U00100000-\\U0010FFFD]',
     extensions: ['js', 'mjs', 'cjs', 'ts', 'mts', 'cts', 'jsx', 'tsx', 'json', 'py'],
-    level: 'malicious'
+    level: 'warning'
+  },
+
+  {
+    name: 'Excessive Whitespace',
+    regex: true,
+    signature: '\\s{80,}',
+    extensions: ['js', 'mjs', 'cjs', 'ts', 'mts', 'cts', 'jsx', 'tsx', 'py'],
+    level: 'warning'
   },
 ]
