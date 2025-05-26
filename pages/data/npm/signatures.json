@@ -272,22 +272,6 @@
     "level": "malicious"
   },
   {
-    "name": "Excessive Whitespace",
-    "regex": true,
-    "signature": "\\s{80,}",
-    "extensions": [
-      "js",
-      "mjs",
-      "cjs",
-      "ts",
-      "mts",
-      "cts",
-      "jsx",
-      "tsx"
-    ],
-    "level": "warning"
-  },
-  {
     "name": "Obfuscated Python (PyArmor Runtime Import)",
     "signature": "from pytransform import pyarmor_runtime",
     "extensions": [
@@ -367,6 +351,23 @@
       "json",
       "py"
     ],
-    "level": "malicious"
+    "level": "warning"
+  },
+  {
+    "name": "Excessive Whitespace",
+    "regex": true,
+    "signature": "\\s{80,}",
+    "extensions": [
+      "js",
+      "mjs",
+      "cjs",
+      "ts",
+      "mts",
+      "cts",
+      "jsx",
+      "tsx",
+      "py"
+    ],
+    "level": "warning"
   }
 ]
