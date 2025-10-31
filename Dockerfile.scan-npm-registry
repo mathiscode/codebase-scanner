@@ -1,3 +1,6 @@
+# docker run -it --rm -v ./db:/tmp/codebase-scanner-npm-registry-results mathiscode/codebase-scanner-scan-npm-registry
+# watch -n 1 'sqlite3 codebase-scanner-npm-registry.sqlite "SELECT COUNT(*) FROM scan_results;" && ls -lh codebase-scanner-npm-registry.sqlite'
+
 FROM node:22-alpine
 RUN npm install -g pnpm
 WORKDIR /app
